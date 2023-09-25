@@ -50,6 +50,8 @@ import random
 import math
 
 bTest = True
+bUseCUDA = False
+
 if bTest:
   # make it repro results while debugging
   random.seed(42)
@@ -173,7 +175,9 @@ import numpy as np
 import torch
 from torch.nn.modules import linear
 print("torch.__version__", torch.__version__)
-device = "cuda" if torch.cuda.is_available() else "cpu"
+device = "cpu"
+if bUseCUDA:
+  device = "cuda" if torch.cuda.is_available() else "cpu"
 print(f"{device=}")
 torch.set_default_device(device)
 
@@ -251,7 +255,9 @@ import numpy as np
 import torch
 from torch.nn.modules import linear
 print("torch.__version__", torch.__version__)
-device = "cuda" if torch.cuda.is_available() else "cpu"
+device = "cpu"
+if bUseCUDA:
+  device = "cuda" if torch.cuda.is_available() else "cpu"
 print(f"{device=}")
 torch.set_default_device(device)
 
@@ -388,7 +394,9 @@ from torch.nn.modules import linear
 from torch.utils.data import Dataset
 from torch.utils.data import DataLoader
 print("torch.__version__", torch.__version__)
-device = "cuda" if torch.cuda.is_available() else "cpu"
+device = "cpu"
+if bUseCUDA:
+  device = "cuda" if torch.cuda.is_available() else "cpu"
 print(f"{device=}")
 torch.set_default_device(device)
 
