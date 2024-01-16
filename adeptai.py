@@ -45,12 +45,19 @@ Original file is located at
 #
 
 # train_python: Do it in pure simple python
+import sys
 import time
 import random
 import math
 
-bTest = True
 bUseCUDA = False
+bTest = True
+
+if len(sys.argv) >= 2:
+  # Use CUDA if first arg is True
+  if sys.argv[1] == "True":
+      bUseCUDA = True
+      print("bUseCUDA is True")
 
 if bTest:
   # make it repro results while debugging
@@ -99,7 +106,7 @@ def train_python(data, num_hidden_units = 10, num_epochs=10000, learn_rate=0.001
   print(f"{a=}\n{b=}\n{c=}")
   time_end = time.time()
   time_diff = time_end - time_start
-  print(f"Took {time_diff:.3f} seconds {(time_diff/60):.3f} minutes {(time_diff/3600):.3f} hours.")
+  print(f"Took {time_diff:.3f} seconds {(time_diff/60):.3f} minutes {(time_diff/3600):.3f} hours.\n")
 
 train_python(data)
 
@@ -161,7 +168,7 @@ def train_numpy(data, num_hidden_units = 10, num_epochs=10000, learn_rate=0.001)
   print(f"{a=}\n{b=}\n{c=}")
   time_end = time.time()
   time_diff = time_end - time_start
-  print(f"Took {time_diff:.3f} seconds {(time_diff/60):.3f} minutes {(time_diff/3600):.3f} hours.")
+  print(f"Took {time_diff:.3f} seconds {(time_diff/60):.3f} minutes {(time_diff/3600):.3f} hours.\n")
 
 train_numpy(data)
 
@@ -240,7 +247,7 @@ def train_torch(data, num_hidden_units = 10, num_epochs=10000, learn_rate=0.001)
   print(f'c= {linear_layer.weight}')
   time_end = time.time()
   time_diff = time_end - time_start
-  print(f"Took {time_diff:.3f} seconds {(time_diff/60):.3f} minutes {(time_diff/3600):.3f} hours.")
+  print(f"Took {time_diff:.3f} seconds {(time_diff/60):.3f} minutes {(time_diff/3600):.3f} hours.\n")
 
 train_torch(data)
 
@@ -316,7 +323,7 @@ def train_torch_vectorized(data, num_hidden_units = 10, num_epochs=10000, learn_
   print(f'c= {linear_layer.weight}')
   time_end = time.time()
   time_diff = time_end - time_start
-  print(f"Took {time_diff:.3f} seconds {(time_diff/60):.3f} minutes {(time_diff/3600):.3f} hours.")
+  print(f"Took {time_diff:.3f} seconds {(time_diff/60):.3f} minutes {(time_diff/3600):.3f} hours.\n")
 
 train_torch_vectorized(data)
 
@@ -377,7 +384,7 @@ def train_numpy_vectorized(data, num_hidden_units = 10, num_epochs=10000, learn_
   print(f"{a=}\n{b=}\n{c=}")
   time_end = time.time()
   time_diff = time_end - time_start
-  print(f"Took {time_diff:.3f} seconds {(time_diff/60):.3f} minutes {(time_diff/3600):.3f} hours.")
+  print(f"Took {time_diff:.3f} seconds {(time_diff/60):.3f} minutes {(time_diff/3600):.3f} hours.\n")
 
 train_numpy_vectorized(data)
 
@@ -476,6 +483,6 @@ def train_torch_batch(data, num_hidden_units = 10, num_epochs=10000, learn_rate=
   print(f'c= {linear_layer.weight}')
   time_end = time.time()
   time_diff = time_end - time_start
-  print(f"Took {time_diff:.3f} seconds {(time_diff/60):.3f} minutes {(time_diff/3600):.3f} hours.")
+  print(f"Took {time_diff:.3f} seconds {(time_diff/60):.3f} minutes {(time_diff/3600):.3f} hours.\n")
 
 train_torch_batch(data)
