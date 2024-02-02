@@ -2,6 +2,8 @@ import time
 import torch
 import torch.nn as nn
 from torch.nn import functional as F
+from torch.utils.data import Dataset
+from torch.utils.data.dataloader import DataLoader
 import math
 
 # run with python gpt_dev.py | tee tmp.log
@@ -82,8 +84,8 @@ time_start = time.time()
 data = torch.tensor(encode(text), dtype=torch.long)
 print("len(data)", len(data), max_iters * batch_size)
 n = int(0.9*len(data)) + 3 # first 90% will be train, rest val, add 3 to end at sentence boundary
-train_text = text[:n]
-train_data = data[:n]
+trn_text = text[:n]
+trn_data = data[:n]
 val_text = text[n:]
 val_data = data[n:]
 # print("end of train:", text[n-100:n])
@@ -94,7 +96,7 @@ val_data = data[n:]
 # so it converges more slowly that get_batch1 for the same number of iterations
 def get_batch(split):
     # generate a small batch of data of inputs x and targets y
-    data = train_data if split == 'train' else val_data
+    data = trn_data if split == 'train' else val_data
     ix = torch.randint(len(data) - block_size, (batch_size,))
     x = torch.stack([data[i:i+block_size] for i in ix])
     y = torch.stack([data[i+1:i+block_size+1] for i in ix])
@@ -102,11 +104,13 @@ def get_batch(split):
     return x, y
 
 trn_index = 0
-trn_len = len(train_data) - block_size
+trn_len = len(trn_data) - block_size
+print(f"{trn_len=}")
 trn_indexes = torch.randperm(trn_len)
 
 val_index = 0
 val_len = len(val_data) - block_size
+print(f"{val_len=}")
 val_indexes = torch.randperm(val_len)
 
 epoch = 0
@@ -116,7 +120,7 @@ def get_batch1(split):
     i = 0
     data = None
     if split == 'train':
-        data = train_data
+        data = trn_data
         global trn_index, trn_len, trn_indexes, epoch
         while i < batch_size:
             if trn_index >= trn_len:
@@ -143,6 +147,27 @@ def get_batch1(split):
     y = torch.stack([data[i+1:i+block_size+1] for i in ix])
     x, y = x.to(device), y.to(device)
     return x, y
+
+# Dataset to predict the next character in the sequence
+class GPTCharDataset(Dataset):
+    def __init__(self, data, block_size):
+        self.data = data
+        self.block_size = block_size
+
+    def __len__(self):
+        return len(self.data) - self.block_size
+
+    def __getitem__(self, idx):
+        x = self.data[idx:idx + self.block_size]
+        y = self.data[idx + 1:idx + self.block_size + 1]
+        # trick to mask off the loss at some positions - when start is partial word
+        # y[len(ix)+1:] = -1 # index -1 will mask the loss at the inactive locations
+        return x, y
+
+trn_dataset = GPTCharDataset(trn_data, block_size)
+val_dataset = GPTCharDataset(val_data, block_size)
+trn_dataloader = DataLoader(trn_dataset, batch_size=batch_size, shuffle=True)
+val_dataloader = DataLoader(val_dataset, batch_size=batch_size, shuffle=True)
 
 @torch.inference_mode()
 def estimate_loss():
@@ -188,8 +213,8 @@ def estimate_generate_loss(max_new_tokens=2000):
     model.eval()
 
     for split in ['train', 'val']:
-        split_data = train_data if split == 'train' else val_data
-        split_text = train_text if split == 'train' else val_text
+        split_data = trn_data if split == 'train' else val_data
+        split_text = trn_text if split == 'train' else val_text
 
         score = 0.0 # sum of log-loss
         cCorrect = 0
@@ -373,6 +398,10 @@ print(sum(p.numel() for p in model.parameters())/1e6, 'M parameters')
 # create a PyTorch optimizer
 optimizer = torch.optim.AdamW(model.parameters(), lr=learning_rate)
 
+size = len(trn_dataloader.dataset)
+print(f"trn_dataloader.dataset {size=}")
+iter_train = iter(trn_dataloader)
+epoch_trn = 0
 for iter in range(max_iters):
 
     # every once in a while evaluate the loss on train and val sets
@@ -383,7 +412,18 @@ for iter in range(max_iters):
             estimate_generate_loss(eval_iters * batch_size)
 
     # sample a batch of data
-    xb, yb = get_batch1('train')
+    if False:
+        xb, yb = get_batch1('train')
+    else:
+        try:
+            xb, yb = next(iter_train)
+        except StopIteration: # this will happen every epoch
+            epoch_trn += 1
+            print("epoch_trn", epoch_trn)
+            iter_train = iter(trn_dataloader)
+            xb, yb = next(iter_train)
+        # print(f"{xb.shape=}, {yb.shape=}")
+        xb, yb = xb.to(device), yb.to(device)
 
     # evaluate the loss
     logits, loss = model(xb, yb)
@@ -428,3 +468,21 @@ if False:
         print("num_samples", num_samples, "analytic_zeros", analytic_zeros, "Actual_Zero", (iy == 0).sum().item())
         print("iy", iy.sum(), iy.max(), iy.min(), iy.mean(), iy.std(), iy.var(), iy.median(), "\n")
     exit()
+
+    size = len(dataloader.dataset)
+    # Set the model to training mode - important for batch normalization and dropout layers
+    # Unnecessary in this situation but added for best practices
+    model.train()
+    for batch, (X, y) in enumerate(dataloader):
+        # Compute prediction and loss
+        pred = model(X)
+        loss = loss_fn(pred, y)
+
+        # Backpropagation
+        loss.backward()
+        optimizer.step()
+        optimizer.zero_grad()
+
+        if batch % 100 == 0:
+            loss, current = loss.item(), batch * batch_size + len(X)
+            print(f"loss: {loss:>7f}  [{current:>5d}/{size:>5d}]")    
