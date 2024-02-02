@@ -158,7 +158,7 @@ def get_batch1(split):
 
 # get_batch = get_batch1 # use the better version - accuracy improves because it uses all the data - doesn't probabalistically skip some
 
-@torch.no_grad()
+@torch.inference_mode()
 def estimate_loss():
     # by using get_batch1 we get a much better estimate of the loss than with get_batch
     # Save the current state of the data enumeration for training and validation
@@ -317,7 +317,7 @@ model.to(device)
 # print the number of parameters in the model
 print(sum(p.numel() for p in model.parameters())/1e6, 'M parameters')
 
-@torch.no_grad()
+@torch.inference_mode()
 def estimate_whole_loss(max_new_tokens=2000):
     # Compute the log-loss to generate the trainset and valset
     # by the model.  This is a better estimate of the log-loss than
@@ -377,7 +377,7 @@ optimizer = torch.optim.AdamW(model.parameters(), lr=learning_rate)
 for iter in range(max_iters):
 
     # every once in a while evaluate the loss on train and val sets
-    with torch.no_grad():
+    with torch.inference_mode():
         if iter % eval_interval == 0 or iter == max_iters - 1:
             losses = estimate_loss()
             estimate_whole_loss(eval_iters * batch_size)
@@ -398,7 +398,7 @@ print("\nEstimate the log-loss on the train and val sets to generate them")
 estimate_whole_loss(eval_gen_final)
 
 # generate from the model
-with torch.no_grad():
+with torch.inference_mode():
     context = torch.zeros((1, 1), dtype=torch.long, device=device)
     print(decode(model.generate(context, max_new_tokens=(eval_gen_final//10))[0].tolist()))
 
