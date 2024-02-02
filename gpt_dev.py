@@ -5,7 +5,6 @@ from torch.nn import functional as F
 import math
 
 # run with python gpt_dev.py | tee tmp.log
-
 # This is from the collab notebook for lecture 5 on gpt from:
 # https://github.com/karpathy/ng-video-lecture
 # This is derived from the code in:
@@ -17,31 +16,6 @@ import math
 # Will it help log-loss on train and test?
 
 # Track the accuracy and loss on the trainset - running averages
-
-# This was just me trying to figure out how much data is expected to be skipped in
-# 1 epoch with the simple random sampling with replacement
-# that Karpathy uses in his code.  Turns out it's a lot, 36.8%, 1/e.  So I wrote a
-# better version of get_batch that doesn't skip over any data - it uses all the data
-# every time.  Karpathy's version is simple and short - but in an epoch 1 / e of the 
-# data won't be used.  So it's not a good way to train a model ususally, but for
-# keeping the code simple Karpathy's version is fine for educational purposes.
-if False:
-    torch.manual_seed(42)
-    num_samples = 200000
-
-    print("e 1/e", math.e, 1/math.e)
-
-    for exp_samples in range(5):
-        num_samples = 10 ** exp_samples
-        ix = torch.randint(num_samples, (num_samples,))
-        # iy is a histogram of the number of times each index is sampled
-        iy = torch.zeros(num_samples)
-        for i in ix:
-            iy[i] += 1
-        analytic_zeros = num_samples * math.pow(((num_samples - 1) / num_samples), num_samples)
-        print("num_samples", num_samples, "analytic_zeros", analytic_zeros, "Actual_Zero", (iy == 0).sum().item())
-        print("iy", iy.sum(), iy.max(), iy.min(), iy.mean(), iy.std(), iy.var(), iy.median(), "\n")
-    exit()
 
 # hyperparameters
 batch_size = 512 # how many independent sequences will we process in parallel?
@@ -58,8 +32,6 @@ if True: # debug/test for quick runs
 
 learning_rate = 1e-3
 device = 'cpu' # for this small network it's faster on CPU than on GPU on my machine
-print(f'using device: {device}')
-# torch.set_default_device(device)  # This makes it slower too on both cuda and cpu - a lot slower on both
 n_embd = 64
 n_head = 4
 n_layer = 4
@@ -76,6 +48,8 @@ if False: # 0.2M parameters to 10.78M parameters, 16X slower even with cuda
     device = 'cuda' if torch.cuda.is_available() else 'cpu'
 # ------------
 
+print(f'using device: {device}')
+# torch.set_default_device(device)  # This makes it slower too on both cuda and cpu - a lot slower on both (?)
 torch.manual_seed(1337)
 
 # wget https://raw.githubusercontent.com/karpathy/char-rnn/master/data/tinyshakespeare/input.txt
@@ -430,3 +404,28 @@ with torch.inference_mode():
 time_end = time.time()
 time_diff = time_end - time_start
 print(f"Took {time_diff:.3f} seconds {(time_diff/60):.3f} minutes {(time_diff/3600):.3f} hours.\n")
+
+if False:
+    # This was just me trying to figure out how much data is expected to be skipped in
+    # 1 epoch with the simple random sampling with replacement
+    # that Karpathy uses in his code.  Turns out it's a lot, 36.8%, 1/e.  So I wrote a
+    # better version of get_batch that doesn't skip over any data - it uses all the data
+    # every time.  Karpathy's version is simple and short - but in an epoch 1 / e of the
+    # data won't be used.  So it's not a good way to train a model ususally, but for
+    # keeping the code simple Karpathy's version is fine for educational purposes.
+
+    torch.manual_seed(42)
+    num_samples = 200000
+    print("e 1/e", math.e, 1/math.e)
+
+    for exp_samples in range(5):
+        num_samples = 10 ** exp_samples
+        ix = torch.randint(num_samples, (num_samples,))
+        # iy is a histogram of the number of times each index is sampled
+        iy = torch.zeros(num_samples)
+        for i in ix:
+            iy[i] += 1
+        analytic_zeros = num_samples * math.pow(((num_samples - 1) / num_samples), num_samples)
+        print("num_samples", num_samples, "analytic_zeros", analytic_zeros, "Actual_Zero", (iy == 0).sum().item())
+        print("iy", iy.sum(), iy.max(), iy.min(), iy.mean(), iy.std(), iy.var(), iy.median(), "\n")
+    exit()
