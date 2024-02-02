@@ -6,6 +6,11 @@ import math
 
 # run with python gpt_dev.py | tee tmp.log
 
+# This is from the collab notebook for lecture 5 on gpt from
+# https://github.com/karpathy/ng-video-lecture
+# Probably most like the code in 
+# https://github.com/karpathy/ng-video-lecture/blob/master/gpt.py
+
 # What is the longest word - mask off gradient from all partial words that start a sequence
 # The gradient of the first character only applies if it's the first character of the word
 # The gradient of parital words  should be masked off
@@ -45,7 +50,7 @@ max_iters = 5000
 eval_interval = 100
 eval_iters = 4
 eval_gen_final = 20000
-if True:
+if False:
     max_iters = 5
     eval_interval = 1
     eval_iters = 1
@@ -53,9 +58,9 @@ if True:
 
 learning_rate = 1e-3
 device = 'cuda' if torch.cuda.is_available() else 'cpu'
-# device = 'cpu' # for this small network it's faster on CPU than on GPU on my machine
+device = 'cpu' # for this small network it's faster on CPU than on GPU on my machine
 print(f'using device: {device}')
-# torch.set_default_device(device)  This makes it slower too...
+# torch.set_default_device(device)  # This makes it slower too on both cuda and cpu - a lot slower on both
 n_embd = 64
 n_head = 4
 n_layer = 4
@@ -274,6 +279,17 @@ class GPTLanguageModel(nn.Module):
         self.ln_f = nn.LayerNorm(n_embd) # final layer norm
         self.lm_head = nn.Linear(n_embd, vocab_size)
 
+        # better init, not covered in the original GPT video, but important, will cover in followup video
+        self.apply(self._init_weights)
+
+    def _init_weights(self, module):
+        if isinstance(module, nn.Linear):
+            torch.nn.init.normal_(module.weight, mean=0.0, std=0.02)
+            if module.bias is not None:
+                torch.nn.init.zeros_(module.bias)
+        elif isinstance(module, nn.Embedding):
+            torch.nn.init.normal_(module.weight, mean=0.0, std=0.02)        
+
     def forward(self, idx, targets=None):
         B, T = idx.shape
 
@@ -380,9 +396,8 @@ for iter in range(max_iters):
     with torch.inference_mode():
         if iter % eval_interval == 0 or iter == max_iters - 1:
             losses = estimate_loss()
-            estimate_whole_loss(eval_iters * batch_size)
-
             print(f"{iter}: tra {losses['train']:.4f}, val {losses['val']:.4f}")
+            estimate_whole_loss(eval_iters * batch_size)
 
     # sample a batch of data
     xb, yb = get_batch1('train')
