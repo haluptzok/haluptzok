@@ -6,9 +6,9 @@ import math
 
 # run with python gpt_dev.py | tee tmp.log
 
-# This is from the collab notebook for lecture 5 on gpt from
+# This is from the collab notebook for lecture 5 on gpt from:
 # https://github.com/karpathy/ng-video-lecture
-# Probably most like the code in 
+# This is derived from the code in:
 # https://github.com/karpathy/ng-video-lecture/blob/master/gpt.py
 
 # What is the longest word - mask off gradient from all partial words that start a sequence
@@ -50,7 +50,7 @@ max_iters = 5000
 eval_interval = 100
 eval_iters = 4
 eval_gen_final = 20000
-if False:
+if True:
     max_iters = 5
     eval_interval = 1
     eval_iters = 1
@@ -65,6 +65,15 @@ n_embd = 64
 n_head = 4
 n_layer = 4
 dropout = 0.0
+
+if False:
+    batch_size = 64 # how many independent sequences will we process in parallel?
+    block_size = 256 # what is the maximum context length for predictions?
+    learning_rate = 3e-4
+    n_embd = 384
+    n_head = 6
+    n_layer = 6
+    dropout = 0.2
 # ------------
 
 torch.manual_seed(1337)
@@ -208,17 +217,19 @@ class Head(nn.Module):
         self.dropout = nn.Dropout(dropout)
 
     def forward(self, x):
+        # input of size (batch, time-step, channels)
+        # output of size (batch, time-step, head size)
         B,T,C = x.shape
-        k = self.key(x)   # (B,T,C)
-        q = self.query(x) # (B,T,C)
+        k = self.key(x)   # (B,T,hs)
+        q = self.query(x) # (B,T,hs)
         # compute attention scores ("affinities")
-        wei = q @ k.transpose(-2,-1) * C**-0.5 # (B, T, C) @ (B, C, T) -> (B, T, T)
+        wei = q @ k.transpose(-2,-1) * C**-0.5 # (B, T, hs) @ (B, hs, T) -> (B, T, T)
         wei = wei.masked_fill(self.tril[:T, :T] == 0, float('-inf')) # (B, T, T)
         wei = F.softmax(wei, dim=-1) # (B, T, T)
         wei = self.dropout(wei)
         # perform the weighted aggregation of the values
-        v = self.value(x) # (B,T,C)
-        out = wei @ v # (B, T, T) @ (B, T, C) -> (B, T, C)
+        v = self.value(x) # (B,T,hs)
+        out = wei @ v # (B, T, T) @ (B, T, hs) -> (B, T, hs)
         return out
 
 class MultiHeadAttention(nn.Module):
@@ -227,7 +238,7 @@ class MultiHeadAttention(nn.Module):
     def __init__(self, num_heads, head_size):
         super().__init__()
         self.heads = nn.ModuleList([Head(head_size) for _ in range(num_heads)])
-        self.proj = nn.Linear(n_embd, n_embd)
+        self.proj = nn.Linear(head_size * num_heads, n_embd)
         self.dropout = nn.Dropout(dropout)
 
     def forward(self, x):
@@ -267,7 +278,6 @@ class Block(nn.Module):
         x = x + self.ffwd(self.ln2(x))
         return x
 
-# super simple GPT model
 class GPTLanguageModel(nn.Module):
 
     def __init__(self):
@@ -288,7 +298,7 @@ class GPTLanguageModel(nn.Module):
             if module.bias is not None:
                 torch.nn.init.zeros_(module.bias)
         elif isinstance(module, nn.Embedding):
-            torch.nn.init.normal_(module.weight, mean=0.0, std=0.02)        
+            torch.nn.init.normal_(module.weight, mean=0.0, std=0.02)
 
     def forward(self, idx, targets=None):
         B, T = idx.shape
