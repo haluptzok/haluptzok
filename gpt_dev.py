@@ -144,11 +144,10 @@ def get_batch1(split):
     x, y = x.to(device), y.to(device)
     return x, y
 
-# get_batch = get_batch1 # use the better version - accuracy improves because it uses all the data - doesn't probabalistically skip some
-
 @torch.inference_mode()
 def estimate_loss():
-    # by using get_batch1 we get a much better estimate of the loss than with get_batch
+    # computes loss at each position - so some chars have 1 char of context
+    # and some chars have block_size chars of context.
     # Save the current state of the data enumeration for training and validation
     # set the data enumeration to the beginning of the data, not randomized
     # so it's the exact same data every time
@@ -176,6 +175,60 @@ def estimate_loss():
 
     trn_index, trn_len, trn_indexes = tmp_trn_index, tmp_trn_len, tmp_trn_indexes
     val_index, val_len, val_indexes = tmp_val_index, tmp_val_len, tmp_val_indexes
+    return out
+
+@torch.inference_mode()
+def estimate_generate_loss(max_new_tokens=2000):
+    # Compute the log-loss to generate the trainset and valset
+    # by the model.  This is a better estimate of the log-loss than
+    # estimate_loss because this uses the full context at each step of 
+    # the generation, after generating the first block_size tokens.
+
+    out = {}
+    model.eval()
+
+    for split in ['train', 'val']:
+        split_data = train_data if split == 'train' else val_data
+        split_text = train_text if split == 'train' else val_text
+
+        score = 0.0 # sum of log-loss
+        cCorrect = 0
+        # generate from the model
+        idx = torch.zeros((1, 1), dtype=torch.long, device=device)
+        # print(decode(m.generate(context, max_new_tokens=2000)[0].tolist()))
+
+        # def generate(self, idx, max_new_tokens):
+        # idx is (B, T) array of indices in the current context
+        for i_char in range(max_new_tokens):
+            # crop idx to the last block_size tokens
+            idx_cond = idx[:, -block_size:]
+            # get the predictions
+            logits, loss = model(idx_cond)
+            # focus only on the last time step
+            logits = logits[:, -1, :] # becomes (B, C)
+            # apply softmax to get probabilities
+            probs = F.softmax(logits, dim=-1) # (B, C)
+            # sample from the distribution
+            # idx_next = torch.multinomial(probs, num_samples=1) # (B, 1) # sample from the distribution
+            prob_next, idx_next = torch.max(probs, dim=1, keepdim=True) # (B, 1)  # take the best one
+            # Did we predict the next character correctly?
+            if idx_next[0,0] == split_data[i_char]:
+                cCorrect += 1
+            # Set the correct index to the next character
+            idx_next[0,0] = split_data[i_char]
+            # print(f"{idx_next[0]=}, {idx_next[0].tolist()=}, {decode(idx_next[0].tolist())=}")
+            # print(f"{i_char=}, {split_text[i_char]=}, {split_data[i_char]=}, {decode(idx_next[0].tolist())=}, {prob_next=}")
+            # Get the probability for the correct next character
+            score += -torch.log(probs[0, split_data[i_char]]).item()
+
+            # append sampled index to the running sequence
+            idx = torch.cat((idx, idx_next), dim=1) # (B, T+1)
+
+        out[split] = (score, max_new_tokens, cCorrect)
+        avg_log_prob = score / max_new_tokens
+        print(f"                            {split[:3]} log_prob={(score/max_new_tokens):.4f}, prob={math.exp(-avg_log_prob):.4f}, {cCorrect=}/{max_new_tokens}")
+    model.train()
+
     return out
 
 class Head(nn.Module):
@@ -317,60 +370,6 @@ model.to(device)
 # print the number of parameters in the model
 print(sum(p.numel() for p in model.parameters())/1e6, 'M parameters')
 
-@torch.inference_mode()
-def estimate_whole_loss(max_new_tokens=2000):
-    # Compute the log-loss to generate the trainset and valset
-    # by the model.  This is a better estimate of the log-loss than
-    # estimate_loss because this uses the full context at each step of 
-    # the generation, after generating the first block_size tokens.
-
-    out = {}
-    model.eval()
-
-    for split in ['train', 'val']:
-        split_data = train_data if split == 'train' else val_data
-        split_text = train_text if split == 'train' else val_text
-
-        score = 0.0 # sum of log-loss
-        cCorrect = 0
-        # generate from the model
-        idx = torch.zeros((1, 1), dtype=torch.long, device=device)
-        # print(decode(m.generate(context, max_new_tokens=2000)[0].tolist()))
-
-        # def generate(self, idx, max_new_tokens):
-        # idx is (B, T) array of indices in the current context
-        for i_char in range(max_new_tokens):
-            # crop idx to the last block_size tokens
-            idx_cond = idx[:, -block_size:]
-            # get the predictions
-            logits, loss = model(idx_cond)
-            # focus only on the last time step
-            logits = logits[:, -1, :] # becomes (B, C)
-            # apply softmax to get probabilities
-            probs = F.softmax(logits, dim=-1) # (B, C)
-            # sample from the distribution
-            # idx_next = torch.multinomial(probs, num_samples=1) # (B, 1) # sample from the distribution
-            prob_next, idx_next = torch.max(probs, dim=1, keepdim=True) # (B, 1)  # take the best one
-            # Did we predict the next character correctly?
-            if idx_next[0,0] == split_data[i_char]:
-                cCorrect += 1
-            # Set the correct index to the next character
-            idx_next[0,0] = split_data[i_char]
-            # print(f"{idx_next[0]=}, {idx_next[0].tolist()=}, {decode(idx_next[0].tolist())=}")
-            # print(f"{i_char=}, {split_text[i_char]=}, {split_data[i_char]=}, {decode(idx_next[0].tolist())=}, {prob_next=}")
-            # Get the probability for the correct next character
-            score += -torch.log(probs[0, split_data[i_char]]).item()
-
-            # append sampled index to the running sequence
-            idx = torch.cat((idx, idx_next), dim=1) # (B, T+1)
-
-        out[split] = (score, max_new_tokens, cCorrect)
-        avg_log_prob = score / max_new_tokens
-        print(f"                            {split[:3]} log_prob={(score/max_new_tokens):.4f}, prob={math.exp(-avg_log_prob):.4f}, {cCorrect=}/{max_new_tokens}")
-    model.train()
-
-    return out
-
 # create a PyTorch optimizer
 optimizer = torch.optim.AdamW(model.parameters(), lr=learning_rate)
 
@@ -381,7 +380,7 @@ for iter in range(max_iters):
         if iter % eval_interval == 0 or iter == max_iters - 1:
             losses = estimate_loss()
             print(f"{iter}: tra {losses['train']:.4f}, val {losses['val']:.4f}")
-            estimate_whole_loss(eval_iters * batch_size)
+            estimate_generate_loss(eval_iters * batch_size)
 
     # sample a batch of data
     xb, yb = get_batch1('train')
@@ -394,7 +393,7 @@ for iter in range(max_iters):
 
 # compute log-loss on the data set.
 print("\nEstimate the log-loss on the train and val sets to generate them")
-estimate_whole_loss(eval_gen_final)
+estimate_generate_loss(eval_gen_final)
 
 # generate from the model
 with torch.inference_mode():
