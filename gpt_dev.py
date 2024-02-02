@@ -50,14 +50,13 @@ max_iters = 5000
 eval_interval = 100
 eval_iters = 4
 eval_gen_final = 20000
-if True:
+if True: # debug/test for quick runs
     max_iters = 5
     eval_interval = 1
     eval_iters = 1
     eval_gen_final = 200
 
 learning_rate = 1e-3
-device = 'cuda' if torch.cuda.is_available() else 'cpu'
 device = 'cpu' # for this small network it's faster on CPU than on GPU on my machine
 print(f'using device: {device}')
 # torch.set_default_device(device)  # This makes it slower too on both cuda and cpu - a lot slower on both
@@ -66,14 +65,15 @@ n_head = 4
 n_layer = 4
 dropout = 0.0
 
-if False:
-    batch_size = 64 # how many independent sequences will we process in parallel?
+if False: # 0.2M parameters to 10.78M parameters, 16X slower even with cuda
+    batch_size = 512 # how many independent sequences will we process in parallel?
     block_size = 256 # what is the maximum context length for predictions?
-    learning_rate = 3e-4
+    # learning_rate = 3e-4
     n_embd = 384
     n_head = 6
     n_layer = 6
     dropout = 0.2
+    device = 'cuda' if torch.cuda.is_available() else 'cpu'
 # ------------
 
 torch.manual_seed(1337)
