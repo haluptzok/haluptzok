@@ -313,9 +313,9 @@ class GPTLanguageModel(nn.Module):
         return idx
 
 model = GPTLanguageModel()
-m = model.to(device)
+model.to(device)
 # print the number of parameters in the model
-print(sum(p.numel() for p in m.parameters())/1e6, 'M parameters')
+print(sum(p.numel() for p in model.parameters())/1e6, 'M parameters')
 
 @torch.no_grad()
 def estimate_whole_loss(max_new_tokens=2000):
@@ -343,14 +343,14 @@ def estimate_whole_loss(max_new_tokens=2000):
             # crop idx to the last block_size tokens
             idx_cond = idx[:, -block_size:]
             # get the predictions
-            logits, loss = m(idx_cond)
+            logits, loss = model(idx_cond)
             # focus only on the last time step
             logits = logits[:, -1, :] # becomes (B, C)
             # apply softmax to get probabilities
             probs = F.softmax(logits, dim=-1) # (B, C)
             # sample from the distribution
-            # idx_next = torch.multinomial(probs, num_samples=1) # (B, 1)
-            prob_next, idx_next = torch.max(probs, dim=1, keepdim=True) # (B, 1)  # the best one
+            # idx_next = torch.multinomial(probs, num_samples=1) # (B, 1) # sample from the distribution
+            prob_next, idx_next = torch.max(probs, dim=1, keepdim=True) # (B, 1)  # take the best one
             # Did we predict the next character correctly?
             if idx_next[0,0] == split_data[i_char]:
                 cCorrect += 1
@@ -377,11 +377,12 @@ optimizer = torch.optim.AdamW(model.parameters(), lr=learning_rate)
 for iter in range(max_iters):
 
     # every once in a while evaluate the loss on train and val sets
-    if iter % eval_interval == 0 or iter == max_iters - 1:
-        losses = estimate_loss()
-        estimate_whole_loss(eval_iters * batch_size)
+    with torch.no_grad():
+        if iter % eval_interval == 0 or iter == max_iters - 1:
+            losses = estimate_loss()
+            estimate_whole_loss(eval_iters * batch_size)
 
-        print(f"{iter}: tra {losses['train']:.4f}, val {losses['val']:.4f}")
+            print(f"{iter}: tra {losses['train']:.4f}, val {losses['val']:.4f}")
 
     # sample a batch of data
     xb, yb = get_batch1('train')
@@ -399,7 +400,7 @@ estimate_whole_loss(eval_gen_final)
 # generate from the model
 with torch.no_grad():
     context = torch.zeros((1, 1), dtype=torch.long, device=device)
-    print(decode(m.generate(context, max_new_tokens=(eval_gen_final//10))[0].tolist()))
+    print(decode(model.generate(context, max_new_tokens=(eval_gen_final//10))[0].tolist()))
 
 time_end = time.time()
 time_diff = time_end - time_start
