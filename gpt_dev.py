@@ -26,7 +26,7 @@ max_iters = 5000
 eval_interval = 100
 eval_iters = 4
 eval_gen_final = 20000
-if True: # debug/test for quick runs
+if False: # debug/test for quick runs
     max_iters = 5
     eval_interval = 1
     eval_iters = 1
@@ -468,21 +468,3 @@ if False:
         print("num_samples", num_samples, "analytic_zeros", analytic_zeros, "Actual_Zero", (iy == 0).sum().item())
         print("iy", iy.sum(), iy.max(), iy.min(), iy.mean(), iy.std(), iy.var(), iy.median(), "\n")
     exit()
-
-    size = len(dataloader.dataset)
-    # Set the model to training mode - important for batch normalization and dropout layers
-    # Unnecessary in this situation but added for best practices
-    model.train()
-    for batch, (X, y) in enumerate(dataloader):
-        # Compute prediction and loss
-        pred = model(X)
-        loss = loss_fn(pred, y)
-
-        # Backpropagation
-        loss.backward()
-        optimizer.step()
-        optimizer.zero_grad()
-
-        if batch % 100 == 0:
-            loss, current = loss.item(), batch * batch_size + len(X)
-            print(f"loss: {loss:>7f}  [{current:>5d}/{size:>5d}]")    
