@@ -498,9 +498,9 @@ def print_samples(num=10):
     print('-'*80)
 
 @torch.inference_mode()
-def evaluate(model, dataset, batch_size=50, max_batches=None):
+def evaluate(model, dataset, batch_size, max_batches):
     model.eval()
-    loader = DataLoader(dataset, shuffle=True, batch_size=batch_size, num_workers=0)
+    loader = DataLoader(dataset, shuffle=False, batch_size=batch_size, num_workers=0)
     losses = []
     for i, batch in enumerate(loader):
         batch = [t.to(args.device) for t in batch]
@@ -512,6 +512,59 @@ def evaluate(model, dataset, batch_size=50, max_batches=None):
     mean_loss = torch.tensor(losses).mean().item()
     model.train() # reset model back to training mode
     return mean_loss
+
+@torch.inference_mode()
+def estimate_generate_loss(model, trn_data, val_data, device, max_new_tokens=2000):
+    # Compute the log-loss to generate the trainset and valset
+    # by the model.  This is a better estimate of the log-loss than
+    # estimate_loss because this uses the full context at each step of
+    # the generation, after generating the first block_size tokens.
+
+    out = {}
+    model.eval()
+
+    for split in ['trn', 'tst']:
+        split_data = trn_data if split == 'trn' else val_data
+
+        score = 0.0 # sum of log-loss
+        cCorrect = 0
+        # generate from the model
+        idx = torch.zeros((1, 1), dtype=torch.long, device=device)
+        # print(decode(m.generate(context, max_new_tokens=2000)[0].tolist()))
+
+        # def generate(self, idx, max_new_tokens):
+        # idx is (B, T) array of indices in the current context
+        for i_char in range(max_new_tokens):
+            # crop idx to the last block_size tokens
+            idx_cond = idx[:, -block_size:]
+            # get the predictions
+            logits, loss = model(idx_cond)
+            # focus only on the last time step
+            logits = logits[:, -1, :] # becomes (B, C)
+            # apply softmax to get probabilities
+            probs = F.softmax(logits, dim=-1) # (B, C)
+            # sample from the distribution
+            # idx_next = torch.multinomial(probs, num_samples=1) # (B, 1) # sample from the distribution
+            prob_next, idx_next = torch.max(probs, dim=1, keepdim=True) # (B, 1)  # take the best one
+            # Did we predict the next character correctly?
+            if idx_next[0,0] == split_data[i_char]:
+                cCorrect += 1
+            # Set the correct index to the next character
+            idx_next[0,0] = split_data[i_char]
+            # print(f"{idx_next[0]=}, {idx_next[0].tolist()=}, {decode(idx_next[0].tolist())=}")
+            # print(f"{i_char=}, {split_text[i_char]=}, {split_data[i_char]=}, {decode(idx_next[0].tolist())=}, {prob_next=}")
+            # Get the probability for the correct next character
+            score += -torch.log(probs[0, split_data[i_char]]).item()
+
+            # append sampled index to the running sequence
+            idx = torch.cat((idx, idx_next), dim=1) # (B, T+1)
+
+        out[split] = (score, max_new_tokens, cCorrect)
+        avg_log_prob = score / max_new_tokens
+        print(f"GLos/{split[:3]} {(score/max_new_tokens):.4f}, prob={math.exp(-avg_log_prob):.4f}, {cCorrect=}/{max_new_tokens}")
+    model.train()
+
+    return out
 
 # -----------------------------------------------------------------------------
 # helper functions for creating the training and test Datasets that emit words
@@ -731,6 +784,7 @@ if __name__ == '__main__':
     if args.resume or args.sample_only: # note: if we sample-only then we also assume we are resuming
         print("resuming from existing model in the workdir")
         model.load_state_dict(torch.load(os.path.join(args.work_dir, 'model.pt')))
+        best_loss = evaluate(model, test_dataset,  batch_size=args.batch_size, max_batches=4)
     if args.sample_only:
         print_samples(num=50)
         sys.exit()
@@ -766,20 +820,25 @@ if __name__ == '__main__':
             t0 = t1
 
         # evaluate the model
-        if step > 0 and step % 1000 == 0:
-            train_loss = evaluate(model, train_dataset, batch_size=100, max_batches=10)
-            test_loss  = evaluate(model, test_dataset,  batch_size=100, max_batches=10)
-            print("Loss/train", train_loss, step)
-            print("Loss/test", test_loss, step)
-            print(f"step {step} train loss: {train_loss} test loss: {test_loss}")
+        if (step > 0 and step % 1000 == 0) or step == (args.max_steps - 1):
+            t0 = time.time()
+            train_loss = evaluate(model, train_dataset, batch_size=args.batch_size, max_batches=4)
+            test_loss  = evaluate(model, test_dataset,  batch_size=args.batch_size, max_batches=4)
+            print(f"Loss/trn {train_loss:.4f}", step)
+            print(f"Loss/tst {test_loss:.4f}", step)
+            if step == (args.max_steps - 1):
+                if args.gentext > 0:
+                    estimate_generate_loss(model, train_dataset.data, test_dataset.data, args.device, max_new_tokens=4*args.batch_size)
+                print_samples(num=10)
             # save the model to disk if it has improved
             if best_loss is None or test_loss < best_loss:
                 out_path = os.path.join(args.work_dir, "model.pt")
                 print(f"test loss {test_loss} is the best so far, saving model to {out_path}")
                 torch.save(model.state_dict(), out_path)
                 best_loss = test_loss
-            print_samples(num=10)
-            t0 = time.time()
+            t1 = time.time()
+            print(f"evaluate time {(t1-t0)*1000:.2f}ms")
+            t0 = t1
 
         step += 1
         # termination conditions

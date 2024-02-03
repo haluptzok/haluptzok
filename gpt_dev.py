@@ -26,7 +26,7 @@ import sys
 batch_size = 512 # how many independent sequences will we process in parallel?
 block_size = 32 # what is the maximum context length for predictions?
 max_iters = 5000
-eval_interval = 100
+eval_interval = 1000
 eval_iters = 4
 eval_gen_final = 20000
 if True: # debug/test for quick runs
