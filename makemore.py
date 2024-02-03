@@ -28,7 +28,6 @@ import torch.nn as nn
 from torch.nn import functional as F
 from torch.utils.data import Dataset
 from torch.utils.data.dataloader import DataLoader
-# from torch.utils.tensorboard import SummaryWriter
 
 # -----------------------------------------------------------------------------
 
@@ -94,7 +93,7 @@ class CausalSelfAttention(nn.Module):
         return y
 
 class Block(nn.Module):
-    """ an unassuming Transformer block """
+    """ Transformer block: communication followed by computation """
 
     def __init__(self, config):
         super().__init__()
@@ -104,7 +103,7 @@ class Block(nn.Module):
         self.mlp = nn.ModuleDict(dict(
             c_fc    = nn.Linear(config.n_embd, 4 * config.n_embd),
             c_proj  = nn.Linear(4 * config.n_embd, config.n_embd),
-            act     = NewGELU(),
+            act     = nn.ReLU() # NewGELU(), # ReLU is 25% faster and convergence is better too
         ))
         m = self.mlp
         self.mlpf = lambda x: m.c_proj(m.act(m.c_fc(x))) # MLP forward
@@ -132,6 +131,17 @@ class Transformer(nn.Module):
         # report number of parameters (note we don't count the decoder parameters in lm_head)
         n_params = sum(p.numel() for p in self.transformer.parameters())
         print("number of parameters: %.2fM" % (n_params/1e6,))
+
+        # better init, not covered in the original GPT video, but important, will cover in followup video
+        self.apply(self._init_weights)
+
+    def _init_weights(self, module):
+        if isinstance(module, nn.Linear):
+            torch.nn.init.normal_(module.weight, mean=0.0, std=0.02)
+            if module.bias is not None:
+                torch.nn.init.zeros_(module.bias)
+        elif isinstance(module, nn.Embedding):
+            torch.nn.init.normal_(module.weight, mean=0.0, std=0.02)
 
     def get_block_size(self):
         return self.block_size
@@ -574,6 +584,61 @@ def create_datasets(input_file):
 
     return train_dataset, test_dataset
 
+class GentextDataset(Dataset):
+
+    def __init__(self, text, chars, block_size):
+        self.chars = chars
+        self.block_size = block_size
+        self.stoi = {ch:i for i,ch in enumerate(chars)}
+        self.itos = {i:ch for i,ch in enumerate(chars)}
+        self.data = self.encode(text)
+
+    def __len__(self):
+        return len(self.data) - self.block_size
+
+    def contains(self, word):
+        return False
+
+    def get_vocab_size(self):
+        return len(self.chars) # all the possible characters
+
+    def get_output_length(self):
+        return self.block_size
+
+    def encode(self, word):
+        ix = torch.tensor([self.stoi[w] for w in word], dtype=torch.long)
+        return ix
+
+    def decode(self, ix):
+        word = ''.join(self.itos[i] for i in ix)
+        return word
+
+    def __getitem__(self, idx):
+        x = self.data[idx:idx + self.block_size]
+        y = self.data[idx + 1:idx + self.block_size + 1]
+        return x, y
+
+def create_datasets_gentext(input_file, block_size):
+    # preprocessing of the input text file
+    with open('input.txt', 'r', encoding='utf-8') as f:
+        text = f.read()
+    # here are all the unique characters that occur in this text
+    chars = sorted(list(set(text)))
+    vocab_size = len(chars)
+    print(f"{vocab_size=}")
+    print("vocabulary:")
+    print(''.join(chars))
+
+    # Train and test splits
+    n = int(0.9*len(text)) + 3 # first 90% will be train, rest val, add 3 to end at sentence boundary
+    trn_text = text[:n]
+    tst_text = text[n:]
+    print("len(text,trn_text,tst_text)", len(text), len(trn_text), len(tst_text))
+    train_dataset = GentextDataset(trn_text, chars, block_size)
+    test_dataset = GentextDataset(tst_text, chars, block_size)
+
+    return train_dataset, test_dataset
+
 class InfiniteDataLoader:
     """
     this is really hacky and I'm not proud of it, but there doesn't seem to be
@@ -607,8 +672,10 @@ if __name__ == '__main__':
     parser.add_argument('--max-steps', type=int, default=1001, help="max number of optimization steps to run for, or -1 for infinite.")
     parser.add_argument('--device', type=str, default='cuda', help="device to use for compute, examples: cpu|cuda|cuda:2|mps")
     parser.add_argument('--seed', type=int, default=3407, help="seed")
+    parser.add_argument('--gentext', type=int, default=0, help="generate text like Shapespere")
     # sampling
     parser.add_argument('--top-k', type=int, default=-1, help="top-k for sampling, -1 means no top-k")
+    parser.add_argument('--block_size', type=int, default=32, help="top-k for sampling, -1 means no top-k")
     # model
     parser.add_argument('--type', type=str, default='transformer', help="model class type to use, bigram|mlp|rnn|gru|bow|transformer")
     parser.add_argument('--n-layer', type=int, default=4, help="number of layers")
@@ -628,10 +695,13 @@ if __name__ == '__main__':
     torch.manual_seed(args.seed)
     torch.cuda.manual_seed_all(args.seed)
     os.makedirs(args.work_dir, exist_ok=True)
-    # writer = SummaryWriter(log_dir=args.work_dir)
 
     # init datasets
-    train_dataset, test_dataset = create_datasets(args.input_file)
+    if args.gentext > 0:
+        train_dataset, test_dataset = create_datasets_gentext(args.input_file, args.block_size)
+    else:
+        train_dataset, test_dataset = create_datasets(args.input_file)
+
     vocab_size = train_dataset.get_vocab_size()
     block_size = train_dataset.get_output_length()
     print(f"dataset determined that: {vocab_size=}, {block_size=}")
@@ -666,7 +736,8 @@ if __name__ == '__main__':
         sys.exit()
 
     # init optimizer
-    optimizer = torch.optim.AdamW(model.parameters(), lr=args.learning_rate, weight_decay=args.weight_decay, betas=(0.9, 0.99), eps=1e-8)
+    # optimizer = torch.optim.AdamW(model.parameters(), lr=args.learning_rate, weight_decay=args.weight_decay, betas=(0.9, 0.99), eps=1e-8)
+    optimizer = torch.optim.AdamW(model.parameters(), lr=args.learning_rate)
 
     # init dataloader
     batch_loader = InfiniteDataLoader(train_dataset, batch_size=args.batch_size, pin_memory=True, num_workers=args.num_workers)
@@ -691,7 +762,7 @@ if __name__ == '__main__':
         # logging
         if step % 50 == 0:
             t1 = time.time()
-            print(f"step {step} | loss {loss.item():.4f} | 10 step time {(t1-t0)*1000:.2f}ms")
+            print(f"step {step} | loss {loss.item():.4f} | step time {(t1-t0)*1000:.2f}ms")
             t0 = t1
 
         # evaluate the model
