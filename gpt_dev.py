@@ -5,6 +5,9 @@ from torch.nn import functional as F
 from torch.utils.data import Dataset
 from torch.utils.data.dataloader import DataLoader
 import math
+import argparse
+import os
+import sys
 
 # run with python gpt_dev.py | tee tmp.log
 # This is from the collab notebook for lecture 5 on gpt from:
@@ -26,9 +29,9 @@ max_iters = 5000
 eval_interval = 100
 eval_iters = 4
 eval_gen_final = 20000
-if False: # debug/test for quick runs
-    max_iters = 5
-    eval_interval = 1
+if True: # debug/test for quick runs
+    max_iters = 1000
+    eval_interval = 1000
     eval_iters = 1
     eval_gen_final = 200
 
@@ -170,7 +173,7 @@ trn_dataloader = DataLoader(trn_dataset, batch_size=batch_size, shuffle=True)
 val_dataloader = DataLoader(val_dataset, batch_size=batch_size, shuffle=True)
 
 @torch.inference_mode()
-def estimate_loss():
+def estimate_loss(model):
     # computes loss at each position - so some chars have 1 char of context
     # and some chars have block_size chars of context.
     # Save the current state of the data enumeration for training and validation
@@ -203,7 +206,7 @@ def estimate_loss():
     return out
 
 @torch.inference_mode()
-def estimate_generate_loss(max_new_tokens=2000):
+def estimate_generate_loss(model, max_new_tokens=2000):
     # Compute the log-loss to generate the trainset and valset
     # by the model.  This is a better estimate of the log-loss than
     # estimate_loss because this uses the full context at each step of 
@@ -331,6 +334,7 @@ class Block(nn.Module):
         return x
 
 class GPTLanguageModel(nn.Module):
+    """ Transformer Language Model, exactly as seen in GPT-2 """
 
     def __init__(self):
         super().__init__()
@@ -391,7 +395,7 @@ class GPTLanguageModel(nn.Module):
         return idx
 
 model = GPTLanguageModel()
-model.to(device)
+model = model.to(device)
 # print the number of parameters in the model
 print(sum(p.numel() for p in model.parameters())/1e6, 'M parameters')
 
@@ -402,15 +406,8 @@ size = len(trn_dataloader.dataset)
 print(f"trn_dataloader.dataset {size=}")
 iter_train = iter(trn_dataloader)
 epoch_trn = 0
-for cur_iter in range(max_iters):
-
-    # every once in a while evaluate the loss on train and val sets
-    with torch.inference_mode():
-        if cur_iter % eval_interval == 0 or cur_iter == max_iters - 1:
-            losses = estimate_loss()
-            print(f"{cur_iter}: tra {losses['train']:.4f}, val {losses['val']:.4f}")
-            estimate_generate_loss(eval_iters * batch_size)
-
+t0 = time.time()
+for step in range(max_iters):
     # sample a batch of data
     if False:
         xb, yb = get_batch1('train')
@@ -419,7 +416,7 @@ for cur_iter in range(max_iters):
             xb, yb = next(iter_train)
         except StopIteration: # this will happen every epoch
             epoch_trn += 1
-            print("epoch_trn cur_iter", epoch_trn, cur_iter)
+            print("epoch_trn step", epoch_trn, step)
             iter_train = iter(trn_dataloader)
             xb, yb = next(iter_train)
         # print(f"{xb.shape=}, {yb.shape=}")
@@ -427,13 +424,30 @@ for cur_iter in range(max_iters):
 
     # evaluate the loss
     logits, loss = model(xb, yb)
-    optimizer.zero_grad(set_to_none=True)
+    model.zero_grad(set_to_none=True)
+    # optimizer.zero_grad(set_to_none=True)
     loss.backward()
     optimizer.step()
 
+    if step % 50 == 0:
+        t1 = time.time()
+        print(f"step {step} | loss {loss.item():.4f} | step time {(t1-t0)*1000:.2f}ms")
+        t0 = t1
+
+    # every once in a while evaluate the loss on train and val sets
+    with torch.inference_mode():
+        if (step > 0 and step % eval_interval == 0) or step == max_iters - 1:
+            losses = estimate_loss(model)
+            print(f"{step}: tra {losses['train']:.4f}, val {losses['val']:.4f}")
+            estimate_generate_loss(model, eval_iters * batch_size)
+
+time_end = time.time()
+time_diff = time_end - time_start
+print(f"Took {time_diff:.3f} seconds {(time_diff/60):.3f} minutes {(time_diff/3600):.3f} hours.\n")
+
 # compute log-loss on the data set.
 print("\nEstimate the log-loss on the train and val sets to generate them")
-estimate_generate_loss(eval_gen_final)
+estimate_generate_loss(model, eval_gen_final)
 
 # generate from the model
 with torch.inference_mode():
@@ -443,6 +457,135 @@ with torch.inference_mode():
 time_end = time.time()
 time_diff = time_end - time_start
 print(f"Took {time_diff:.3f} seconds {(time_diff/60):.3f} minutes {(time_diff/3600):.3f} hours.\n")
+exit()
+
+if __name__ == '__main__':
+
+    # parse command line args
+    parser = argparse.ArgumentParser(description="gpt_dev")
+    # system/input/output
+    parser.add_argument('--input-file', '-i', type=str, default='names.txt', help="input file with things one per line")
+    parser.add_argument('--work-dir', '-o', type=str, default='out', help="output working directory")
+    parser.add_argument('--resume', action='store_true', help="when this flag is used, we will resume optimization from existing model in the workdir")
+    parser.add_argument('--sample-only', action='store_true', help="just sample from the model and quit, don't train")
+    parser.add_argument('--num-workers', '-n', type=int, default=4, help="number of data workers for both train/test")
+    parser.add_argument('--max-steps', type=int, default=1001, help="max number of optimization steps to run for, or -1 for infinite.")
+    parser.add_argument('--device', type=str, default='cuda', help="device to use for compute, examples: cpu|cuda|cuda:2|mps")
+    parser.add_argument('--seed', type=int, default=3407, help="seed")
+    # sampling
+    parser.add_argument('--top-k', type=int, default=-1, help="top-k for sampling, -1 means no top-k")
+    # model
+    parser.add_argument('--type', type=str, default='transformer', help="model class type to use, bigram|mlp|rnn|gru|bow|transformer")
+    parser.add_argument('--n-layer', type=int, default=4, help="number of layers")
+    parser.add_argument('--n-head', type=int, default=4, help="number of heads (in a transformer)")
+    parser.add_argument('--n-embd', type=int, default=64, help="number of feature channels in the model")
+    parser.add_argument('--n-embd2', type=int, default=64, help="number of feature channels elsewhere in the model")
+    # optimization
+    parser.add_argument('--batch-size', '-b', type=int, default=512, help="batch size during optimization")
+    parser.add_argument('--learning-rate', '-l', type=float, default=5e-4, help="learning rate")
+    parser.add_argument('--weight-decay', '-w', type=float, default=0.01, help="weight decay")
+    args = parser.parse_args()
+    print(vars(args))
+
+    print(f"running on device: {args.device} learning rate: {args.learning_rate} batch size: {args.batch_size}")
+
+    # system inits
+    torch.manual_seed(args.seed)
+    torch.cuda.manual_seed_all(args.seed)
+    os.makedirs(args.work_dir, exist_ok=True)
+    # writer = SummaryWriter(log_dir=args.work_dir)
+
+    # init datasets
+    train_dataset, test_dataset = create_datasets(args.input_file)
+    vocab_size = train_dataset.get_vocab_size()
+    block_size = train_dataset.get_output_length()
+    print(f"dataset determined that: {vocab_size=}, {block_size=}")
+
+    time_start = time.time()
+
+    # init model
+    config = ModelConfig(vocab_size=vocab_size, block_size=block_size,
+                       n_layer=args.n_layer, n_head=args.n_head,
+                       n_embd=args.n_embd, n_embd2=args.n_embd2)
+    if args.type == 'gpt':
+        model = GPTLanguageModel()
+    elif args.type == 'transformer':
+        model = Transformer(config)
+    elif args.type == 'bigram':
+        model = Bigram(config)
+    elif args.type == 'mlp':
+        model = MLP(config)
+    elif args.type == 'rnn':
+        model = RNN(config, cell_type='rnn')
+    elif args.type == 'gru':
+        model = RNN(config, cell_type='gru')
+    elif args.type == 'bow':
+        model = BoW(config)
+    else:
+        raise ValueError(f'model type {args.type} is not recognized')
+    model.to(args.device)
+    print(f"model #params: {sum(p.numel() for p in model.parameters())}")
+    if args.resume or args.sample_only: # note: if we sample-only then we also assume we are resuming
+        print("resuming from existing model in the workdir")
+        model.load_state_dict(torch.load(os.path.join(args.work_dir, 'model.pt')))
+    if args.sample_only:
+        print_samples(num=50)
+        sys.exit()
+
+    # init optimizer
+    optimizer = torch.optim.AdamW(model.parameters(), lr=args.learning_rate, weight_decay=args.weight_decay, betas=(0.9, 0.99), eps=1e-8)
+
+    # init dataloader
+    batch_loader = InfiniteDataLoader(train_dataset, batch_size=args.batch_size, pin_memory=True, num_workers=args.num_workers)
+
+    # training loop
+    best_loss = None
+    step = 0
+    t0 = time.time()
+    while True:
+        # get the next batch, ship to device, and unpack it to input and target
+        X, Y = batch_loader.next()
+        X, Y = X.to(args.device), Y.to(args.device)
+
+        # feed into the model
+        logits, loss = model(X, Y)
+
+        # calculate the gradient, update the weights
+        model.zero_grad(set_to_none=True)
+        loss.backward()
+        optimizer.step()
+
+        # logging
+        if step % 50 == 0:
+            t1 = time.time()
+            print(f"step {step} | loss {loss.item():.4f} | 10 step time {(t1-t0)*1000:.2f}ms")
+            t0 = t1
+
+        # evaluate the model
+        if step > 0 and step % 1000 == 0:
+            train_loss = evaluate(model, train_dataset, batch_size=100, max_batches=10)
+            test_loss  = evaluate(model, test_dataset,  batch_size=100, max_batches=10)
+            print("Loss/train", train_loss, step)
+            print("Loss/test", test_loss, step)
+            print(f"step {step} train loss: {train_loss} test loss: {test_loss}")
+            # save the model to disk if it has improved
+            if best_loss is None or test_loss < best_loss:
+                out_path = os.path.join(args.work_dir, "model.pt")
+                print(f"test loss {test_loss} is the best so far, saving model to {out_path}")
+                torch.save(model.state_dict(), out_path)
+                best_loss = test_loss
+            print_samples(num=10)
+            t0 = time.time()
+
+        step += 1
+        # termination conditions
+        if args.max_steps >= 0 and step >= args.max_steps:
+            break
+
+    time_end = time.time()
+    time_diff = time_end - time_start
+    print(f"Took {time_diff:.3f} seconds {(time_diff/60):.3f} minutes {(time_diff/3600):.3f} hours.\n")
+
 
 if False:
     # This was just me trying to figure out how much data is expected to be skipped in
