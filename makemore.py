@@ -677,12 +677,8 @@ if __name__ == '__main__':
     t0 = time.time()
     while True:
         # get the next batch, ship to device, and unpack it to input and target
-        batch = batch_loader.next()
-        if step == 0:
-            print("batch", batch, type(batch), len(batch))
-            print("batch", batch[0].shape, batch[1].shape)
-        batch = [t.to(args.device) for t in batch]
-        X, Y = batch
+        X, Y = batch_loader.next()
+        X, Y = X.to(args.device), Y.to(args.device)
 
         # feed into the model
         logits, loss = model(X, Y)
