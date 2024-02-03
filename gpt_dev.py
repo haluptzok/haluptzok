@@ -402,13 +402,13 @@ size = len(trn_dataloader.dataset)
 print(f"trn_dataloader.dataset {size=}")
 iter_train = iter(trn_dataloader)
 epoch_trn = 0
-for iter in range(max_iters):
+for cur_iter in range(max_iters):
 
     # every once in a while evaluate the loss on train and val sets
     with torch.inference_mode():
-        if iter % eval_interval == 0 or iter == max_iters - 1:
+        if cur_iter % eval_interval == 0 or cur_iter == max_iters - 1:
             losses = estimate_loss()
-            print(f"{iter}: tra {losses['train']:.4f}, val {losses['val']:.4f}")
+            print(f"{cur_iter}: tra {losses['train']:.4f}, val {losses['val']:.4f}")
             estimate_generate_loss(eval_iters * batch_size)
 
     # sample a batch of data
@@ -419,7 +419,7 @@ for iter in range(max_iters):
             xb, yb = next(iter_train)
         except StopIteration: # this will happen every epoch
             epoch_trn += 1
-            print("epoch_trn", epoch_trn)
+            print("epoch_trn cur_iter", epoch_trn, cur_iter)
             iter_train = iter(trn_dataloader)
             xb, yb = next(iter_train)
         # print(f"{xb.shape=}, {yb.shape=}")
