@@ -1,4 +1,64 @@
 import time
+'''
+103 splitMerge [1, 2, 3, 4, 5, 16, 17, 18, 19, 20] [6, 7, 8, 9, 10, 11, 12, 13, 14, 15] 10
+103 splitMerge [1, 2, 3, 4, 5, 16, 17, 18, 19, 20] [6, 7, 8, 9, 10, 11, 12, 13, 14, 15] 10 == 10
+Took 3.175 seconds 0.053 minutes 0.001 hours.
+
+104 splitMerge [9, 13, 9, 13, 6, 37] [25, 37, 10, 8, 1, 2, 1, 1, 1, 1] 8
+104 splitMerge [9, 13, 9, 13, 6] [25, 10, 8, 1, 2, 1, 1, 1, 1] 8 == 8
+Took 3.330 seconds 0.056 minutes 0.001 hours.
+
+105 splitMerge [18] [6, 1, 3, 2, 1, 1, 1, 1, 1, 1] 9
+105 splitMerge [18] [6, 1, 3, 2, 1, 1, 1, 1, 1, 1] 9 == 9
+Took 4.465 seconds 0.074 minutes 0.001 hours.
+
+106 splitMerge [2, 2, 39, 37, 19, 8, 15, 11, 36, 37] [35, 30, 16, 33, 10, 21, 10, 14, 20, 17] 10
+106 splitMerge [2, 2, 39, 37, 19, 8, 15, 11, 36, 37] [35, 30, 16, 33, 10, 21, 10, 14, 20, 17] 10 == 10
+Took 4.023 seconds 0.067 minutes 0.001 hours.
+
+103 splitMerge [1, 2, 3, 4, 5, 16, 17, 18, 19, 20] [6, 7, 8, 9, 10, 11, 12, 13, 14, 15] 10
+103 splitMerge [1, 2, 3, 4, 5, 16, 17, 18, 19, 20] [6, 7, 8, 9, 10, 11, 12, 13, 14, 15] 10 == 10
+Took 3.180 seconds 0.053 minutes 0.001 hours.
+
+104 splitMerge [9, 13, 9, 13, 6, 37] [25, 37, 10, 8, 1, 2, 1, 1, 1, 1] 8
+104 splitMerge [9, 13, 9, 13, 6] [25, 10, 8, 1, 2, 1, 1, 1, 1] 8 == 8
+Took 3.346 seconds 0.056 minutes 0.001 hours.
+
+105 splitMerge [18] [6, 1, 3, 2, 1, 1, 1, 1, 1, 1] 9
+105 splitMerge [18] [6, 1, 3, 2, 1, 1, 1, 1, 1, 1] 9 == 9
+Took 4.535 seconds 0.076 minutes 0.001 hours.
+
+106 splitMerge [2, 2, 39, 37, 19, 8, 15, 11, 36, 37] [35, 30, 16, 33, 10, 21, 10, 14, 20, 17] 10
+106 splitMerge [2, 2, 39, 37, 19, 8, 15, 11, 36, 37] [35, 30, 16, 33, 10, 21, 10, 14, 20, 17] 10 == 10
+Took 4.035 seconds 0.067 minutes 0.001 hours.
+
+old:
+
+0 splitMerge [2, 2, 39, 37, 19, 8, 15, 11, 36, 37] [35, 30, 16, 33, 10, 21, 10, 14, 20, 17] 10
+0 splitMerge [2, 2, 39, 37, 19, 8, 15, 11, 36, 37] [35, 30, 16, 33, 10, 21, 10, 14, 20, 17] 10 == 10
+Took 3.704 seconds 0.062 minutes 0.001 hours.
+
+1 splitMerge [12, 22] [19, 6, 1, 2, 1, 1, 1, 1, 1, 1] 8
+1 splitMerge [12, 22] [19, 6, 1, 2, 1, 1, 1, 1, 1, 1] 8 == 8
+Took 70.646 seconds 1.177 minutes 0.020 hours.
+
+0 splitMerge [2, 2, 39, 37, 19, 8, 15, 11, 36, 37] [35, 30, 16, 33, 10, 21, 10, 14, 20, 17] 10
+0 splitMerge [2, 2, 39, 37, 19, 8, 15, 11, 36, 37] [35, 30, 16, 33, 10, 21, 10, 14, 20, 17] 10 == 10
+Took 4.549 seconds 0.076 minutes 0.001 hours.
+
+1 splitMerge [12, 22] [19, 6, 1, 2, 1, 1, 1, 1, 1, 1] 8
+1 splitMerge [12, 22] [19, 6, 1, 2, 1, 1, 1, 1, 1, 1] 8 == 8
+Took 75.965 seconds 1.266 minutes 0.021 hours.
+
+2 splitMerge [24, 29, 19, 8] [29, 13, 29, 3, 1, 1, 1, 1, 1, 1] 8
+2 splitMerge [24, 19, 8] [13, 29, 3, 1, 1, 1, 1, 1, 1] 8 == 8
+Took 269.589 seconds 4.493 minutes 0.075 hours.
+'''
+# Switch to tuples - need them for caching - does it help/hurt?
+# Can I put the lists together better?
+# sort the lists - for caching - how much does it hurt?
+# Could I cache input output to save time?  Just do 
+# check if I am repeating a test - removing 1, 1 - only need to check once
 print("hello")
 # 1 2 3 4 10 15   -> 5 11 19
 # Good 3 merges 1,10->11 4,15->19 2,3->5
@@ -12,13 +72,30 @@ max_states = 10 # Max number of stacks
 # At 3 points in the code - the best decision is to do the greedy thing and return
 # But just in case it wasn't - I searched all other possibilities recursively
 
-def splitMerge(startState, finishState, be_greedy=False):
-    # Impossible if the sums don't match
-    if sum(startState) != sum(finishState):
-        return -1
+old =    '''
+    if 0:
+        startState.sort()
+        finishState.sort()
+        # Remove matching elements between start and finish - can't do better than remove them
+        i = 0
+        j = 0
+        while i < len(startState) and j < len(finishState):
+            if startState[i] == finishState[j]:
+                del startState[i]
+                del finishState[i]
+                # don't increment i or j, everything slid down
+                continue
+            if startState[i] < finishState[j]:
+                i += 1
+                continue
+            # Must be startState[i] > finishState[j]
+            j += 1
+    else:
+    '''
 
-    # Remove matching elements between start and finish - can't do better than remove them
-    i = 0
+
+def splitMergeRecursive(startState, finishState, be_greedy=False):
+    i=0
     while i < len(startState):
         elem = startState[i]
         if elem in finishState:
@@ -26,7 +103,7 @@ def splitMerge(startState, finishState, be_greedy=False):
             finishState.remove(elem)
             # don't increment i, everything slid down
         else:
-            i += 1
+            i+=1
 
     # Are we done?
     if len(startState) == 0:
@@ -51,7 +128,7 @@ def splitMerge(startState, finishState, be_greedy=False):
                 # print(i, j, startStateCopy, finishStateCopy, startState, finishState, startState[j])
                 startStateCopy.remove(startState[j])
                 # print(i, j, startStateCopy, finishStateCopy, startState, finishState)
-                cNew = 1 + splitMerge(startStateCopy, finishStateCopy) # +1 for the move to merge
+                cNew = 1 + splitMergeRecursive(startStateCopy, finishStateCopy) # +1 for the move to merge
                 if cNew < cBest:
                     cBest = cNew
 
@@ -70,7 +147,7 @@ def splitMerge(startState, finishState, be_greedy=False):
                 # print(i, j, startStateCopy, finishStateCopy, startState, finishState, startState[j])
                 finishStateCopy.remove(finishState[j])
                 # print(i, j, startStateCopy, finishStateCopy, startState, finishState)
-                cNew = 1 + splitMerge(startStateCopy, finishStateCopy) # +1 for the move to merge
+                cNew = 1 + splitMergeRecursive(startStateCopy, finishStateCopy) # +1 for the move to merge
                 if cNew < cBest:
                     cBest = cNew
 
@@ -89,7 +166,7 @@ def splitMerge(startState, finishState, be_greedy=False):
                     finishStateCopy = finishState.copy()
                     startStateCopy[i] -= finishState[j]  # effectively split, and remove the matching one
                     finishStateCopy.pop(j) # remove the matching one
-                    cNew = 1 + splitMerge(startStateCopy, finishStateCopy) # +1 for the move to split
+                    cNew = 1 + splitMergeRecursive(startStateCopy, finishStateCopy) # +1 for the move to split
                     if cNew < cBest:
                         cBest = cNew
                         if be_greedy:
@@ -106,13 +183,20 @@ def splitMerge(startState, finishState, be_greedy=False):
         startStateCopy.pop(max_elem1[0])
         max_elem2 = max(enumerate(startStateCopy),key=lambda x: x[1])
         startStateCopy[max_elem2[0]] += max_elem1[1]
-        cBest = 1 + splitMerge(startStateCopy, finishState) # +1 for the move to merge
+        cBest = 1 + splitMergeRecursive(startStateCopy, finishState) # +1 for the move to merge
     else:
         # We could recurse on all possible pairs, but I don't think we need to
         pass
 
     return cBest
 
+def splitMerge(startState, finishState):
+    # Impossible if the sums don't match
+    if sum(startState) != sum(finishState):
+        return -1
+
+    # return splitMergeRecursive(tuple(startState), tuple(finishState))
+    return splitMergeRecursive(startState, finishState)
 
 print(splitMerge([1, 2, 3, 4, 10, 15], [5, 11, 19]), 3)
 print(splitMerge([1, 2], [4]), -1)
@@ -145,7 +229,6 @@ all_tests = '''{1, 2}, {3}		1
 {14}, {2, 4, 2, 2, 3, 1}		5			
 {18}, {3, 5, 2, 5, 1, 1, 1}		6			
 {14}, {2, 1, 2, 4, 1, 1, 1, 1, 1}		8			
-{18}, {6, 1, 3, 2, 1, 1, 1, 1, 1, 1}		9			
 {29, 10}, {31, 8}		2			
 {4, 39}, {36, 1, 6}		3			
 {30, 31}, {7, 9, 26, 19}		4			
@@ -170,8 +253,7 @@ all_tests = '''{1, 2}, {3}		1
 {20, 7, 2, 14}, {3, 27, 5, 6, 1, 1}		4			
 {25, 22, 37, 22}, {21, 11, 22, 14, 13, 23, 2}		5			
 {11, 13, 5, 28}, {11, 18, 3, 13, 6, 3, 2, 1}		4			
-{20, 14, 24, 40}, {4, 25, 23, 5, 3, 28, 5, 1, 4}		7			
-{24, 29, 19, 8}, {29, 13, 29, 3, 1, 1, 1, 1, 1, 1}		8			
+{20, 14, 24, 40}, {4, 25, 23, 5, 3, 28, 5, 1, 4}		7
 {28, 23, 25, 6, 10}, {23, 27, 42}		4			
 {32, 38, 28, 6, 4}, {45, 21, 35, 7}		5			
 {19, 30, 36, 20, 33}, {39, 36, 36, 25, 2}		4			
@@ -179,14 +261,12 @@ all_tests = '''{1, 2}, {3}		1
 {32, 6, 10, 39, 12}, {3, 25, 17, 5, 34, 4, 11}		6			
 {1, 14, 22, 11, 6}, {11, 10, 9, 4, 2, 14, 2, 2}		5			
 {28, 6, 29, 17, 35}, {9, 25, 15, 30, 11, 21, 2, 1, 1}		8			
-{32, 21, 32, 25, 29}, {38, 33, 12, 6, 5, 30, 5, 4, 5, 1}		9			
 {18, 6, 7, 40, 23, 11}, {41, 28, 32, 4}		6			
 {5, 38, 14, 6, 12, 9}, {19, 2, 14, 33, 16}		5			
 {14, 38, 26, 17, 6, 26}, {11, 28, 4, 42, 27, 15}		6			
 {18, 14, 21, 25, 39, 14}, {11, 26, 20, 10, 20, 26, 18}		7			
 {27, 22, 1, 37, 25, 22}, {39, 7, 5, 7, 9, 16, 39, 12}		8			
-{40, 5, 38, 2, 20, 28}, {34, 13, 16, 39, 26, 2, 1, 1, 1}		7			
-{9, 13, 9, 13, 6, 37}, {25, 37, 10, 8, 1, 2, 1, 1, 1, 1}		8			
+{40, 5, 38, 2, 20, 28}, {34, 13, 16, 39, 26, 2, 1, 1, 1}		7						
 {4, 14, 17, 26, 10, 23, 30}, {41, 36, 47}		4			
 {39, 6, 4, 3, 25, 37, 31}, {32, 22, 23, 46, 22}		6			
 {3, 21, 40, 11, 18, 25, 30}, {22, 37, 21, 30, 21, 17}		5			
@@ -210,8 +290,7 @@ all_tests = '''{1, 2}, {3}		1
 {28, 13, 12, 2, 4, 11, 33, 2, 30, 19}, {37, 43, 37, 18, 19}		7			
 {14, 5, 19, 16, 33, 17, 11, 16, 36, 26}, {27, 25, 43, 40, 33, 25}		6			
 {7, 9, 12, 11, 4, 33, 14, 12, 11, 22}, {24, 35, 5, 19, 31, 15, 2, 4}		8			
-{16, 10, 32, 23, 30, 10, 4, 36, 31, 30}, {25, 29, 30, 23, 13, 24, 41, 29, 8}		9			
-{2, 2, 39, 37, 19, 8, 15, 11, 36, 37}, {35, 30, 16, 33, 10, 21, 10, 14, 20, 17}		10			
+{16, 10, 32, 23, 30, 10, 4, 36, 31, 30}, {25, 29, 30, 23, 13, 24, 41, 29, 8}		9				
 {4, 15, 40, 32, 13, 15, 50, 46, 18, 11}, {27, 33, 19, 23, 12, 39, 34, 35, 20, 2}		10			
 {31, 4, 19, 24, 31, 29, 24, 33, 2, 17}, {23, 23, 18, 43, 34, 47, 4, 5, 6, 11}		10			
 {8, 2, 35, 11, 47, 32, 41, 12, 4, 28}, {7, 41, 15, 29, 45, 19, 37, 10, 3, 14}		8			
@@ -234,18 +313,23 @@ all_tests = '''{1, 2}, {3}		1
 {42, 8, 18, 10, 11, 10, 49, 25, 39, 27}, {18, 11, 31, 42, 12, 32, 26, 1, 19, 47}		8			
 {1, 2, 3, 4, 6, 20, 24, 25, 25, 26}, {5, 10, 21, 24, 26, 50}		4			
 {15, 17}, {3, 4, 10, 15}		2			
-{50, 40, 40, 40, 40, 40, 40, 40, 40, 40}, {49, 49, 49, 49, 49, 49, 49, 49, 9, 9}		18			
 {1, 4, 5, 49}, {3, 48, 6, 2}		4			
 {42, 35, 20, 29, 13, 6, 32, 12, 46, 28}, {18, 1, 25, 9, 15, 46, 28, 42, 43, 36}		8			
 {50, 3, 7, 48, 50}, {30, 20, 12, 46, 50}		4			
 {5, 11, 12, 13, 1, 1, 1, 11}, {1, 2, 3, 4, 5, 6, 7, 8, 9, 10}		6			
 {1, 4, 2, 5, 1, 2, 48, 2, 8, 10}, {30, 2, 10, 10, 10, 10, 11}		7			
-{11, 12, 13, 14, 15, 16, 17, 18, 19, 20}, {21, 22, 23, 24, 25, 6, 7, 8, 9, 10}		10			
-{50, 50, 50}, {15, 15, 15, 16, 14, 13, 17, 15, 10, 20}		9			
-{1, 2, 3, 4, 5, 16, 17, 18, 19, 20}, {6, 7, 8, 9, 10, 11, 12, 13, 14, 15}		10			
-{1, 2, 3, 4, 5, 6, 7, 8, 9, 10}, {1, 2, 3, 4, 5, 6, 7, 8, 9, 10}		0			
-{2, 2, 2, 4, 4, 50, 50, 8, 12, 2}, {8, 1, 9, 26, 15, 11, 8, 6, 2, 50}		6			
-{25, 25, 22, 31, 24, 19, 22, 19, 13, 23}, {23, 25, 23, 27, 28, 20, 19, 18, 14, 26}		8			
+{11, 12, 13, 14, 15, 16, 17, 18, 19, 20}, {21, 22, 23, 24, 25, 6, 7, 8, 9, 10}		10
+{1, 2, 3, 4, 5, 16, 17, 18, 19, 20}, {6, 7, 8, 9, 10, 11, 12, 13, 14, 15}		10
+{9, 13, 9, 13, 6, 37}, {25, 37, 10, 8, 1, 2, 1, 1, 1, 1}		8
+{18}, {6, 1, 3, 2, 1, 1, 1, 1, 1, 1}		9
+{2, 2, 39, 37, 19, 8, 15, 11, 36, 37}, {35, 30, 16, 33, 10, 21, 10, 14, 20, 17}		10		
+{24, 29, 19, 8}, {29, 13, 29, 3, 1, 1, 1, 1, 1, 1}		8
+{50, 40, 40, 40, 40, 40, 40, 40, 40, 40}, {49, 49, 49, 49, 49, 49, 49, 49, 9, 9}		18
+{50, 50, 50}, {15, 15, 15, 16, 14, 13, 17, 15, 10, 20}		9
+{32, 21, 32, 25, 29}, {38, 33, 12, 6, 5, 30, 5, 4, 5, 1}		9
+{1, 2, 3, 4, 5, 6, 7, 8, 9, 10}, {1, 2, 3, 4, 5, 6, 7, 8, 9, 10}		0
+{2, 2, 2, 4, 4, 50, 50, 8, 12, 2}, {8, 1, 9, 26, 15, 11, 8, 6, 2, 50}		6
+{25, 25, 22, 31, 24, 19, 22, 19, 13, 23}, {23, 25, 23, 27, 28, 20, 19, 18, 14, 26}		8
 {1, 2, 3, 4, 5, 6}, {7, 7, 7}		3			
 {1, 12, 13, 4, 15, 6, 17, 8, 50, 50}, {2, 5, 5, 5, 11, 17, 49, 49, 30, 3}		10			
 {12, 22}, {19, 6, 1, 2, 1, 1, 1, 1, 1, 1}		8			
@@ -257,7 +341,8 @@ print(f"{len(all_tests)=}")
 all_tests1 = all_tests.split("\n")
 print(f"{len(all_tests1)=}")
 
-for index, line in enumerate(all_tests1[79:80] + all_tests1[116:117] + all_tests1[39:40]):
+# for index, line in enumerate(all_tests1[79:80] + all_tests1[116:117] + all_tests1[39:40]):
+for index, line in enumerate(all_tests1[:111]):
     # print(index, line)
     test = line.strip()
     if len(test) == 0:
