@@ -1,20 +1,20 @@
 import time
 '''
-103 splitMerge [1, 2, 3, 4, 5, 16, 17, 18, 19, 20] [6, 7, 8, 9, 10, 11, 12, 13, 14, 15] 10
-103 splitMerge [1, 2, 3, 4, 5, 16, 17, 18, 19, 20] [6, 7, 8, 9, 10, 11, 12, 13, 14, 15] 10 == 10
-Took 2.816 seconds 0.047 minutes 0.001 hours.
+108 splitMerge [1, 2, 3, 4, 5, 16, 17, 18, 19, 20] [6, 7, 8, 9, 10, 11, 12, 13, 14, 15] 10
+108 splitMerge [1, 2, 3, 4, 5, 16, 17, 18, 19, 20] [6, 7, 8, 9, 10, 11, 12, 13, 14, 15] 10 == 10
+Took 0.497 seconds 0.008 minutes 0.000 hours.
 
-104 splitMerge [9, 13, 9, 13, 6, 37] [25, 37, 10, 8, 1, 2, 1, 1, 1, 1] 8
-104 splitMerge [9, 13, 9, 13, 6] [25, 10, 8, 1, 2, 1, 1, 1, 1] 8 == 8
-Took 3.017 seconds 0.050 minutes 0.001 hours.
+109 splitMerge [9, 13, 9, 13, 6, 37] [25, 37, 10, 8, 1, 2, 1, 1, 1, 1] 8
+109 splitMerge [9, 13, 9, 13, 6] [25, 10, 8, 1, 2, 1, 1, 1, 1] 8 == 8
+Took 3.182 seconds 0.053 minutes 0.001 hours.
 
-105 splitMerge [18] [6, 1, 3, 2, 1, 1, 1, 1, 1, 1] 9
-105 splitMerge [18] [6, 1, 3, 2, 1, 1, 1, 1, 1, 1] 9 == 9
-Took 3.950 seconds 0.066 minutes 0.001 hours.
+110 splitMerge [18] [6, 1, 3, 2, 1, 1, 1, 1, 1, 1] 9
+110 splitMerge [18] [6, 1, 3, 2, 1, 1, 1, 1, 1, 1] 9 == 9
+Took 4.099 seconds 0.068 minutes 0.001 hours.
 
-106 splitMerge [2, 2, 39, 37, 19, 8, 15, 11, 36, 37] [35, 30, 16, 33, 10, 21, 10, 14, 20, 17] 10
-106 splitMerge [2, 2, 39, 37, 19, 8, 15, 11, 36, 37] [35, 30, 16, 33, 10, 21, 10, 14, 20, 17] 10 == 10
-Took 3.566 seconds 0.059 minutes 0.001 hours.
+111 splitMerge [2, 2, 39, 37, 19, 8, 15, 11, 36, 37] [35, 30, 16, 33, 10, 21, 10, 14, 20, 17] 10
+111 splitMerge [2, 2, 39, 37, 19, 8, 15, 11, 36, 37] [35, 30, 16, 33, 10, 21, 10, 14, 20, 17] 10 == 10
+Took 1.116 seconds 0.019 minutes 0.000 hours.
 
 107 splitMerge [24, 29, 19, 8] [29, 13, 29, 3, 1, 1, 1, 1, 1, 1] 8
 107 splitMerge [24, 19, 8] [13, 29, 3, 1, 1, 1, 1, 1, 1] 8 == 8
@@ -106,6 +106,9 @@ def splitMergeRecursive(startState, finishState, be_greedy=False):
                 if cNew < cBest:
                     cBest = cNew
 
+    if cBest < worst_moves:  # We already recursed and are done if we found any
+        return cBest
+
     for i in range(len(finishState)):
         for j in range(i + 1, len(finishState)):
             newelem = finishState[i] + finishState[j]
@@ -189,7 +192,12 @@ assert splitMerge([4, 4, 4, 4, 4], [5, 5, 5, 5]) == 7
 assert splitMerge([3, 3, 3, 3, 8], [5, 5, 5, 5]) == 7
 # assert splitMerge([5, 10, 15, 20, 25, 30, 35, 40, 45, 50], [6, 11, 16, 21, 26, 31, 36, 41, 46, 41], 16)
 
-all_tests = '''{1, 2}, {3}		1		
+all_tests = '''{1, 2, 3, 4, 10, 15}, {5, 11, 19} 		       3
+{5, 1, 2, 3, 4, 10, 15}, {5, 11, 19, 1, 4} 		       4
+{5, 11, 19}, {1, 2, 3, 4, 10, 15} 		       3
+{5, 11, 19, 8, 8}, {1, 2, 3, 4, 10, 15, 16} 		       4
+{5, 11, 19, 8, 4, 4}, {1, 2, 3, 4, 10, 15, 16} 		       5
+{1, 2}, {3}		1		
 {4, 2}, {2, 2, 2}		1			
 {1, 2, 3, 4, 5, 6}, {7, 7, 7}		3			
 {3, 4}, {1, 6}		2			
@@ -315,7 +323,7 @@ all_tests1 = all_tests.split("\n")
 print(f"{len(all_tests1)=}")
 
 # for index, line in enumerate(all_tests1[79:80] + all_tests1[116:117] + all_tests1[39:40]):
-for index, line in enumerate(all_tests1[:111]):
+for index, line in enumerate(all_tests1):
     # print(index, line)
     test = line.strip()
     if len(test) == 0:
