@@ -34,27 +34,24 @@ max_states = 10 # Max number of stacks
 # At 3 points in the code - the best decision is to do the greedy thing and return
 # But just in case it wasn't - I searched all other possibilities recursively
 
-old =    '''
-    if 0:
-        # Remove matching elements between start and finish - can't do better than remove them
-        i = 0
-        j = 0
-        while i < len(startState) and j < len(finishState):
-            if startState[i] == finishState[j]:
-                del startState[i]
-                del finishState[i]
-                # don't increment i or j, everything slid down
-                continue
-            if startState[i] < finishState[j]:
-                i += 1
-                continue
+old = '''
+# For deduping this would be faster in C but slower in python...
+    i = 0
+    j = 0
+    while i < len(startState) and j < len(finishState):
+        if startState[i] == finishState[j]:
+            del startState[i]
+            del finishState[j]
+            # don't increment i or j, everything slid down
+        elif startState[i] < finishState[j]:
+            i += 1
+        else:
             # Must be startState[i] > finishState[j]
             j += 1
-    else:
     '''
 
-
 def splitMergeRecursive(startState, finishState, be_greedy=False):
+    # Remove matching elements between start and finish - can't do better than remove them
     i=0
     while i < len(startState):
         elem = startState[i]
@@ -63,7 +60,7 @@ def splitMergeRecursive(startState, finishState, be_greedy=False):
             finishState.remove(elem)
             # don't increment i, everything slid down
         else:
-            i+=1
+            i += 1
 
     # Are we done?
     if len(startState) == 0:
