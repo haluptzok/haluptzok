@@ -2,19 +2,19 @@ import time
 '''
 108 splitMerge [1, 2, 3, 4, 5, 16, 17, 18, 19, 20] [6, 7, 8, 9, 10, 11, 12, 13, 14, 15] 10
 108 splitMerge [1, 2, 3, 4, 5, 16, 17, 18, 19, 20] [6, 7, 8, 9, 10, 11, 12, 13, 14, 15] 10 == 10
-Took 0.399 seconds 0.007 minutes 0.000 hours.
+Took 0.417 seconds 0.007 minutes 0.000 hours.
 
 109 splitMerge [9, 13, 9, 13, 6, 37] [25, 37, 10, 8, 1, 2, 1, 1, 1, 1] 8
 109 splitMerge [6, 9, 9, 13, 13] [1, 1, 1, 1, 1, 2, 8, 10, 25] 8 == 8
-Took 2.216 seconds 0.037 minutes 0.001 hours.
+Took 0.449 seconds 0.007 minutes 0.000 hours.
 
 110 splitMerge [18] [6, 1, 3, 2, 1, 1, 1, 1, 1, 1] 9
 110 splitMerge [18] [1, 1, 1, 1, 1, 1, 1, 2, 3, 6] 9 == 9
-Took 4.066 seconds 0.068 minutes 0.001 hours.
+Took 4.000 seconds 0.067 minutes 0.001 hours.
 
 111 splitMerge [2, 2, 39, 37, 19, 8, 15, 11, 36, 37] [35, 30, 16, 33, 10, 21, 10, 14, 20, 17] 10
 111 splitMerge [2, 2, 8, 11, 15, 19, 36, 37, 37, 39] [10, 10, 14, 16, 17, 20, 21, 30, 33, 35] 10 == 10
-Took 0.867 seconds 0.014 minutes 0.000 hours.
+Took 0.466 seconds 0.008 minutes 0.000 hours.
 '''
 # Switch to tuples - need them for caching - does it help/hurt?
 # Can I put the lists together better?
@@ -71,7 +71,11 @@ def splitMergeRecursive(startState, finishState, be_greedy=False):
     # Merge 2 input that equal an output
     # Might have to check all options recursively
     for i in range(len(startState)):
+        if i > 0 and startState[i] == startState[i - 1]:
+            continue
         for j in range(i + 1, len(startState)):
+            if j > i + 1 and startState[j] == startState[j - 1]:
+                continue
             newelem = startState[i] + startState[j]
             # print("newelem = startState[i] + startState[j]", newelem, startState[i], startState[j])
             if newelem in finishState:
@@ -93,7 +97,11 @@ def splitMergeRecursive(startState, finishState, be_greedy=False):
         return cBest
 
     for i in range(len(finishState)):
+        if i > 0 and finishState[i] == finishState[i - 1]:
+            continue
         for j in range(i + 1, len(finishState)):
+            if j > i + 1 and finishState[j] == finishState[j - 1]:
+                continue
             newelem = finishState[i] + finishState[j]
             # print("newelem = startState[i] + startState[j]", newelem, startState[i], startState[j])
             if newelem in startState:
