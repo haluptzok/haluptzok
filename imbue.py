@@ -15,18 +15,6 @@ Took 4.099 seconds 0.068 minutes 0.001 hours.
 111 splitMerge [2, 2, 39, 37, 19, 8, 15, 11, 36, 37] [35, 30, 16, 33, 10, 21, 10, 14, 20, 17] 10
 111 splitMerge [2, 2, 39, 37, 19, 8, 15, 11, 36, 37] [35, 30, 16, 33, 10, 21, 10, 14, 20, 17] 10 == 10
 Took 1.116 seconds 0.019 minutes 0.000 hours.
-
-107 splitMerge [24, 29, 19, 8] [29, 13, 29, 3, 1, 1, 1, 1, 1, 1] 8
-107 splitMerge [24, 19, 8] [13, 29, 3, 1, 1, 1, 1, 1, 1] 8 == 8
-Took 227.907 seconds 3.798 minutes 0.063 hours.
-
-108 splitMerge [50, 40, 40, 40, 40, 40, 40, 40, 40, 40] [49, 49, 49, 49, 49, 49, 49, 49, 9, 9] 18
-108 splitMerge [50, 40, 40, 40, 40, 40, 40, 40, 40, 40] [49, 49, 49, 49, 49, 49, 49, 49, 9, 9] 18 == 18
-Took 229.754 seconds 3.829 minutes 0.064 hours.
-
-109 splitMerge [50, 50, 50] [15, 15, 15, 16, 14, 13, 17, 15, 10, 20] 9
-109 splitMerge [50, 50, 50] [15, 15, 15, 16, 14, 13, 17, 15, 10, 20] 9 == 9
-Took 173.182 seconds 2.886 minutes 0.048 hours.
 '''
 # Switch to tuples - need them for caching - does it help/hurt?
 # Can I put the lists together better?
@@ -131,17 +119,38 @@ def splitMergeRecursive(startState, finishState, be_greedy=False):
     if cBest < worst_moves:  # We already recursed and are done if we found any
         return cBest
 
-    # Split an input into 2 so that part of it equals an output
+    # Split a start pile into 2 so that part of it equals a finish pile
     # Might have to check all options recursively
     if len(startState) < max_states:  # Can't split if we already have max_states
         for i in range(len(startState)):
             for j in range(len(finishState)):
                 assert startState[i] != finishState[j] # Should have checked for this already
-                if startState[i] > finishState[j]:                        
+                if startState[i] > finishState[j]:
                     startStateCopy = startState.copy()
                     finishStateCopy = finishState.copy()
                     startStateCopy[i] -= finishState[j]  # effectively split, and remove the matching one
+                    # startStateCopy.sort()
                     finishStateCopy.pop(j) # remove the matching one
+                    cNew = 1 + splitMergeRecursive(startStateCopy, finishStateCopy) # +1 for the move to split
+                    if cNew < cBest:
+                        cBest = cNew
+                        if be_greedy:
+                            return cBest # Actually you can't do any better than this greedy decision
+
+    if cBest < worst_moves:  # We already recursed and are done if we found any
+        return cBest
+
+    # Split a finish pile into 2 so that part of it equals a start pile
+    # Might have to check all options recursively
+    if 0: # if len(finishState) < max_states:  # Can't split if we already have max_states
+        for i in range(len(finishState)):
+            for j in range(len(startState)):
+                assert startState[j] != finishState[i] # Should have checked for this already
+                if finishState[i] > startState[j]:
+                    startStateCopy = startState.copy()
+                    finishStateCopy = finishState.copy()
+                    finishStateCopy[i] -= startState[j]  # effectively split, and remove the matching one
+                    startStateCopy.pop(j) # remove the matching one
                     cNew = 1 + splitMergeRecursive(startStateCopy, finishStateCopy) # +1 for the move to split
                     if cNew < cBest:
                         cBest = cNew
@@ -180,6 +189,8 @@ print(splitMerge([1, 2], [1, 2]), 0)
 print(splitMerge([1, 2], [3]), 1)
 print(splitMerge([4, 2], [2, 2, 2]), 1)
 print(splitMerge([1, 2, 3, 4, 5, 6], [7, 7, 7]), 3)
+print(splitMerge([4, 4, 4, 4, 4], [5, 5, 5, 5]), 7)
+print(splitMerge([3, 3, 3, 3, 8], [5, 5, 5, 5]), 7)
 
 assert splitMerge([1, 2], [4]) == -1
 assert splitMerge([1, 2], [1, 2]) == 0
