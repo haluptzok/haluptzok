@@ -2,19 +2,19 @@ import time
 '''
 108 splitMerge [1, 2, 3, 4, 5, 16, 17, 18, 19, 20] [6, 7, 8, 9, 10, 11, 12, 13, 14, 15] 10
 108 splitMerge [1, 2, 3, 4, 5, 16, 17, 18, 19, 20] [6, 7, 8, 9, 10, 11, 12, 13, 14, 15] 10 == 10
-Took 0.497 seconds 0.008 minutes 0.000 hours.
+Took 0.399 seconds 0.007 minutes 0.000 hours.
 
 109 splitMerge [9, 13, 9, 13, 6, 37] [25, 37, 10, 8, 1, 2, 1, 1, 1, 1] 8
-109 splitMerge [9, 13, 9, 13, 6] [25, 10, 8, 1, 2, 1, 1, 1, 1] 8 == 8
-Took 3.182 seconds 0.053 minutes 0.001 hours.
+109 splitMerge [6, 9, 9, 13, 13] [1, 1, 1, 1, 1, 2, 8, 10, 25] 8 == 8
+Took 2.216 seconds 0.037 minutes 0.001 hours.
 
 110 splitMerge [18] [6, 1, 3, 2, 1, 1, 1, 1, 1, 1] 9
-110 splitMerge [18] [6, 1, 3, 2, 1, 1, 1, 1, 1, 1] 9 == 9
-Took 4.099 seconds 0.068 minutes 0.001 hours.
+110 splitMerge [18] [1, 1, 1, 1, 1, 1, 1, 2, 3, 6] 9 == 9
+Took 4.066 seconds 0.068 minutes 0.001 hours.
 
 111 splitMerge [2, 2, 39, 37, 19, 8, 15, 11, 36, 37] [35, 30, 16, 33, 10, 21, 10, 14, 20, 17] 10
-111 splitMerge [2, 2, 39, 37, 19, 8, 15, 11, 36, 37] [35, 30, 16, 33, 10, 21, 10, 14, 20, 17] 10 == 10
-Took 1.116 seconds 0.019 minutes 0.000 hours.
+111 splitMerge [2, 2, 8, 11, 15, 19, 36, 37, 37, 39] [10, 10, 14, 16, 17, 20, 21, 30, 33, 35] 10 == 10
+Took 0.867 seconds 0.014 minutes 0.000 hours.
 '''
 # Switch to tuples - need them for caching - does it help/hurt?
 # Can I put the lists together better?
@@ -36,8 +36,6 @@ max_states = 10 # Max number of stacks
 
 old =    '''
     if 0:
-        startState.sort()
-        finishState.sort()
         # Remove matching elements between start and finish - can't do better than remove them
         i = 0
         j = 0
@@ -129,7 +127,7 @@ def splitMergeRecursive(startState, finishState, be_greedy=False):
                     startStateCopy = startState.copy()
                     finishStateCopy = finishState.copy()
                     startStateCopy[i] -= finishState[j]  # effectively split, and remove the matching one
-                    # startStateCopy.sort()
+                    startStateCopy.sort()
                     finishStateCopy.pop(j) # remove the matching one
                     cNew = 1 + splitMergeRecursive(startStateCopy, finishStateCopy) # +1 for the move to split
                     if cNew < cBest:
@@ -145,7 +143,7 @@ def splitMergeRecursive(startState, finishState, be_greedy=False):
     if 0: # if len(finishState) < max_states:  # Can't split if we already have max_states
         for i in range(len(finishState)):
             for j in range(len(startState)):
-                assert startState[j] != finishState[i] # Should have checked for this already
+                # assert startState[j] != finishState[i] # Should have checked for this already
                 if finishState[i] > startState[j]:
                     startStateCopy = startState.copy()
                     finishStateCopy = finishState.copy()
@@ -160,7 +158,7 @@ def splitMergeRecursive(startState, finishState, be_greedy=False):
     if cBest < worst_moves:  # We already recursed and are done if we found any
         return cBest
 
-    if True:
+    if False:
         # Nothing easy - add the 2 largest elements in the startState and recurse
         # Actually you can't do any better than this greedy decision
         startStateCopy = startState.copy()
@@ -171,7 +169,9 @@ def splitMergeRecursive(startState, finishState, be_greedy=False):
         cBest = 1 + splitMergeRecursive(startStateCopy, finishState) # +1 for the move to merge
     else:
         # We could recurse on all possible pairs, but I don't think we need to
-        pass
+        startState[len(startState) - 2] += startState[len(startState) - 1]
+        del startState[len(startState) - 1]
+        cBest = 1 + splitMergeRecursive(startState, finishState)
 
     return cBest
 
@@ -179,6 +179,8 @@ def splitMerge(startState, finishState):
     # Impossible if the sums don't match
     if sum(startState) != sum(finishState):
         return -1
+    startState.sort()
+    finishState.sort()
 
     # return splitMergeRecursive(tuple(startState), tuple(finishState))
     return splitMergeRecursive(startState, finishState)
