@@ -2,57 +2,31 @@ import time
 '''
 103 splitMerge [1, 2, 3, 4, 5, 16, 17, 18, 19, 20] [6, 7, 8, 9, 10, 11, 12, 13, 14, 15] 10
 103 splitMerge [1, 2, 3, 4, 5, 16, 17, 18, 19, 20] [6, 7, 8, 9, 10, 11, 12, 13, 14, 15] 10 == 10
-Took 3.175 seconds 0.053 minutes 0.001 hours.
+Took 2.912 seconds 0.049 minutes 0.001 hours.
 
 104 splitMerge [9, 13, 9, 13, 6, 37] [25, 37, 10, 8, 1, 2, 1, 1, 1, 1] 8
 104 splitMerge [9, 13, 9, 13, 6] [25, 10, 8, 1, 2, 1, 1, 1, 1] 8 == 8
-Took 3.330 seconds 0.056 minutes 0.001 hours.
+Took 2.981 seconds 0.050 minutes 0.001 hours.
 
 105 splitMerge [18] [6, 1, 3, 2, 1, 1, 1, 1, 1, 1] 9
 105 splitMerge [18] [6, 1, 3, 2, 1, 1, 1, 1, 1, 1] 9 == 9
-Took 4.465 seconds 0.074 minutes 0.001 hours.
+Took 4.027 seconds 0.067 minutes 0.001 hours.
 
 106 splitMerge [2, 2, 39, 37, 19, 8, 15, 11, 36, 37] [35, 30, 16, 33, 10, 21, 10, 14, 20, 17] 10
 106 splitMerge [2, 2, 39, 37, 19, 8, 15, 11, 36, 37] [35, 30, 16, 33, 10, 21, 10, 14, 20, 17] 10 == 10
-Took 4.023 seconds 0.067 minutes 0.001 hours.
+Took 3.632 seconds 0.061 minutes 0.001 hours.
 
-103 splitMerge [1, 2, 3, 4, 5, 16, 17, 18, 19, 20] [6, 7, 8, 9, 10, 11, 12, 13, 14, 15] 10
-103 splitMerge [1, 2, 3, 4, 5, 16, 17, 18, 19, 20] [6, 7, 8, 9, 10, 11, 12, 13, 14, 15] 10 == 10
-Took 3.180 seconds 0.053 minutes 0.001 hours.
+107 splitMerge [24, 29, 19, 8] [29, 13, 29, 3, 1, 1, 1, 1, 1, 1] 8
+107 splitMerge [24, 19, 8] [13, 29, 3, 1, 1, 1, 1, 1, 1] 8 == 8
+Took 227.907 seconds 3.798 minutes 0.063 hours.
 
-104 splitMerge [9, 13, 9, 13, 6, 37] [25, 37, 10, 8, 1, 2, 1, 1, 1, 1] 8
-104 splitMerge [9, 13, 9, 13, 6] [25, 10, 8, 1, 2, 1, 1, 1, 1] 8 == 8
-Took 3.346 seconds 0.056 minutes 0.001 hours.
+108 splitMerge [50, 40, 40, 40, 40, 40, 40, 40, 40, 40] [49, 49, 49, 49, 49, 49, 49, 49, 9, 9] 18
+108 splitMerge [50, 40, 40, 40, 40, 40, 40, 40, 40, 40] [49, 49, 49, 49, 49, 49, 49, 49, 9, 9] 18 == 18
+Took 229.754 seconds 3.829 minutes 0.064 hours.
 
-105 splitMerge [18] [6, 1, 3, 2, 1, 1, 1, 1, 1, 1] 9
-105 splitMerge [18] [6, 1, 3, 2, 1, 1, 1, 1, 1, 1] 9 == 9
-Took 4.535 seconds 0.076 minutes 0.001 hours.
-
-106 splitMerge [2, 2, 39, 37, 19, 8, 15, 11, 36, 37] [35, 30, 16, 33, 10, 21, 10, 14, 20, 17] 10
-106 splitMerge [2, 2, 39, 37, 19, 8, 15, 11, 36, 37] [35, 30, 16, 33, 10, 21, 10, 14, 20, 17] 10 == 10
-Took 4.035 seconds 0.067 minutes 0.001 hours.
-
-old:
-
-0 splitMerge [2, 2, 39, 37, 19, 8, 15, 11, 36, 37] [35, 30, 16, 33, 10, 21, 10, 14, 20, 17] 10
-0 splitMerge [2, 2, 39, 37, 19, 8, 15, 11, 36, 37] [35, 30, 16, 33, 10, 21, 10, 14, 20, 17] 10 == 10
-Took 3.704 seconds 0.062 minutes 0.001 hours.
-
-1 splitMerge [12, 22] [19, 6, 1, 2, 1, 1, 1, 1, 1, 1] 8
-1 splitMerge [12, 22] [19, 6, 1, 2, 1, 1, 1, 1, 1, 1] 8 == 8
-Took 70.646 seconds 1.177 minutes 0.020 hours.
-
-0 splitMerge [2, 2, 39, 37, 19, 8, 15, 11, 36, 37] [35, 30, 16, 33, 10, 21, 10, 14, 20, 17] 10
-0 splitMerge [2, 2, 39, 37, 19, 8, 15, 11, 36, 37] [35, 30, 16, 33, 10, 21, 10, 14, 20, 17] 10 == 10
-Took 4.549 seconds 0.076 minutes 0.001 hours.
-
-1 splitMerge [12, 22] [19, 6, 1, 2, 1, 1, 1, 1, 1, 1] 8
-1 splitMerge [12, 22] [19, 6, 1, 2, 1, 1, 1, 1, 1, 1] 8 == 8
-Took 75.965 seconds 1.266 minutes 0.021 hours.
-
-2 splitMerge [24, 29, 19, 8] [29, 13, 29, 3, 1, 1, 1, 1, 1, 1] 8
-2 splitMerge [24, 19, 8] [13, 29, 3, 1, 1, 1, 1, 1, 1] 8 == 8
-Took 269.589 seconds 4.493 minutes 0.075 hours.
+109 splitMerge [50, 50, 50] [15, 15, 15, 16, 14, 13, 17, 15, 10, 20] 9
+109 splitMerge [50, 50, 50] [15, 15, 15, 16, 14, 13, 17, 15, 10, 20] 9 == 9
+Took 173.182 seconds 2.886 minutes 0.048 hours.
 '''
 # Switch to tuples - need them for caching - does it help/hurt?
 # Can I put the lists together better?
