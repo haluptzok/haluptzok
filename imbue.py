@@ -2,19 +2,27 @@ import time
 '''
 108 splitMerge [1, 2, 3, 4, 5, 16, 17, 18, 19, 20] [6, 7, 8, 9, 10, 11, 12, 13, 14, 15] 10
 108 splitMerge [1, 2, 3, 4, 5, 16, 17, 18, 19, 20] [6, 7, 8, 9, 10, 11, 12, 13, 14, 15] 10 == 10
-Took 0.417 seconds 0.007 minutes 0.000 hours.
+Took 0.433 seconds 0.007 minutes 0.000 hours.
 
 109 splitMerge [9, 13, 9, 13, 6, 37] [25, 37, 10, 8, 1, 2, 1, 1, 1, 1] 8
 109 splitMerge [6, 9, 9, 13, 13] [1, 1, 1, 1, 1, 2, 8, 10, 25] 8 == 8
-Took 0.449 seconds 0.007 minutes 0.000 hours.
+Took 0.000 seconds 0.000 minutes 0.000 hours.
 
 110 splitMerge [18] [6, 1, 3, 2, 1, 1, 1, 1, 1, 1] 9
 110 splitMerge [18] [1, 1, 1, 1, 1, 1, 1, 2, 3, 6] 9 == 9
-Took 4.000 seconds 0.067 minutes 0.001 hours.
+Took 0.017 seconds 0.000 minutes 0.000 hours.
 
 111 splitMerge [2, 2, 39, 37, 19, 8, 15, 11, 36, 37] [35, 30, 16, 33, 10, 21, 10, 14, 20, 17] 10
 111 splitMerge [2, 2, 8, 11, 15, 19, 36, 37, 37, 39] [10, 10, 14, 16, 17, 20, 21, 30, 33, 35] 10 == 10
-Took 0.466 seconds 0.008 minutes 0.000 hours.
+Took 0.333 seconds 0.006 minutes 0.000 hours.
+
+112 splitMerge [24, 29, 19, 8] [29, 13, 29, 3, 1, 1, 1, 1, 1, 1] 8
+112 splitMerge [8, 19, 24] [1, 1, 1, 1, 1, 1, 3, 13, 29] 8 == 8
+Took 0.283 seconds 0.005 minutes 0.000 hours.
+
+114 splitMerge [50, 50, 50] [15, 15, 15, 16, 14, 13, 17, 15, 10, 20] 9
+114 splitMerge [50, 50, 50] [10, 13, 14, 15, 15, 15, 15, 16, 17, 20] 9 == 9
+Took 1.050 seconds 0.017 minutes 0.000 hours.
 '''
 # Switch to tuples - need them for caching - does it help/hurt?
 # Can I put the lists together better?
@@ -126,8 +134,12 @@ def splitMergeRecursive(startState, finishState, be_greedy=False):
     # Might have to check all options recursively
     if len(startState) < max_states:  # Can't split if we already have max_states
         for i in range(len(startState)):
+            if i > 0 and startState[i] == startState[i - 1]:
+                continue
             for j in range(len(finishState)):
-                assert startState[i] != finishState[j] # Should have checked for this already
+                if j > 0 and finishState[j] == finishState[j - 1]:
+                    continue
+                # assert startState[i] != finishState[j] # Should have checked for this already
                 if startState[i] > finishState[j]:
                     startStateCopy = startState.copy()
                     finishStateCopy = finishState.copy()
