@@ -2,19 +2,19 @@ import time
 '''
 103 splitMerge [1, 2, 3, 4, 5, 16, 17, 18, 19, 20] [6, 7, 8, 9, 10, 11, 12, 13, 14, 15] 10
 103 splitMerge [1, 2, 3, 4, 5, 16, 17, 18, 19, 20] [6, 7, 8, 9, 10, 11, 12, 13, 14, 15] 10 == 10
-Took 2.912 seconds 0.049 minutes 0.001 hours.
+Took 2.816 seconds 0.047 minutes 0.001 hours.
 
 104 splitMerge [9, 13, 9, 13, 6, 37] [25, 37, 10, 8, 1, 2, 1, 1, 1, 1] 8
 104 splitMerge [9, 13, 9, 13, 6] [25, 10, 8, 1, 2, 1, 1, 1, 1] 8 == 8
-Took 2.981 seconds 0.050 minutes 0.001 hours.
+Took 3.017 seconds 0.050 minutes 0.001 hours.
 
 105 splitMerge [18] [6, 1, 3, 2, 1, 1, 1, 1, 1, 1] 9
 105 splitMerge [18] [6, 1, 3, 2, 1, 1, 1, 1, 1, 1] 9 == 9
-Took 4.027 seconds 0.067 minutes 0.001 hours.
+Took 3.950 seconds 0.066 minutes 0.001 hours.
 
 106 splitMerge [2, 2, 39, 37, 19, 8, 15, 11, 36, 37] [35, 30, 16, 33, 10, 21, 10, 14, 20, 17] 10
 106 splitMerge [2, 2, 39, 37, 19, 8, 15, 11, 36, 37] [35, 30, 16, 33, 10, 21, 10, 14, 20, 17] 10 == 10
-Took 3.632 seconds 0.061 minutes 0.001 hours.
+Took 3.566 seconds 0.059 minutes 0.001 hours.
 
 107 splitMerge [24, 29, 19, 8] [29, 13, 29, 3, 1, 1, 1, 1, 1, 1] 8
 107 splitMerge [24, 19, 8] [13, 29, 3, 1, 1, 1, 1, 1, 1] 8 == 8
@@ -98,9 +98,9 @@ def splitMergeRecursive(startState, finishState, be_greedy=False):
                 # print(i, j, startStateCopy, finishStateCopy, startState, finishState)
                 finishStateCopy.remove(newelem)
                 # print(i, j, startStateCopy, finishStateCopy, startState, finishState)
-                startStateCopy.remove(startState[i])
+                del startStateCopy[j]
                 # print(i, j, startStateCopy, finishStateCopy, startState, finishState, startState[j])
-                startStateCopy.remove(startState[j])
+                del startStateCopy[i]
                 # print(i, j, startStateCopy, finishStateCopy, startState, finishState)
                 cNew = 1 + splitMergeRecursive(startStateCopy, finishStateCopy) # +1 for the move to merge
                 if cNew < cBest:
@@ -117,14 +117,13 @@ def splitMergeRecursive(startState, finishState, be_greedy=False):
                 # print(i, j, startStateCopy, finishStateCopy, startState, finishState)
                 startStateCopy.remove(newelem)
                 # print(i, j, startStateCopy, finishStateCopy, startState, finishState)
-                finishStateCopy.remove(finishState[i])
+                del finishStateCopy[j]
                 # print(i, j, startStateCopy, finishStateCopy, startState, finishState, startState[j])
-                finishStateCopy.remove(finishState[j])
+                del finishStateCopy[i]
                 # print(i, j, startStateCopy, finishStateCopy, startState, finishState)
                 cNew = 1 + splitMergeRecursive(startStateCopy, finishStateCopy) # +1 for the move to merge
                 if cNew < cBest:
                     cBest = cNew
-
 
     if cBest < worst_moves:  # We already recursed and are done if we found any
         return cBest
