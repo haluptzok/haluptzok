@@ -159,7 +159,11 @@ def splitMergeRecursive(startState, finishState, be_greedy=False):
     # Might have to check all options recursively
     if 0: # if len(finishState) < max_states:  # Can't split if we already have max_states
         for i in range(len(finishState)):
+            if i > 0 and finishState[i] == finishState[i - 1]:
+                continue
             for j in range(len(startState)):
+                if j > 0 and startState[j] == startState[j - 1]:
+                    continue
                 # assert startState[j] != finishState[i] # Should have checked for this already
                 if finishState[i] > startState[j]:
                     startStateCopy = startState.copy()
@@ -176,20 +180,27 @@ def splitMergeRecursive(startState, finishState, be_greedy=False):
         return cBest
 
     if False:
-        # Nothing easy - add the 2 largest elements in the startState and recurse
-        # Actually you can't do any better than this greedy decision
-        startStateCopy = startState.copy()
-        max_elem1 = max(enumerate(startStateCopy),key=lambda x: x[1])
-        startStateCopy.pop(max_elem1[0])
-        max_elem2 = max(enumerate(startStateCopy),key=lambda x: x[1])
-        startStateCopy[max_elem2[0]] += max_elem1[1]
-        cBest = 1 + splitMergeRecursive(startStateCopy, finishState) # +1 for the move to merge
+        # Merge 2 largest piles
+        if startState[0] < finishState[0]:
+            startState[1] += startState[0]
+            del startState[0]
+        else:
+            finishState[1] += finishState[0]
+            del finishState[0]
+
+        # Merge 2 smallest piles
+        if startState[0] < finishState[0]:
+            startState[1] += startState[0]
+            del startState[0]
+        else:
+            finishState[1] += finishState[0]
+            del finishState[0]
     else:
         # We could recurse on all possible pairs, but I don't think we need to
         startState[len(startState) - 2] += startState[len(startState) - 1]
         del startState[len(startState) - 1]
-        cBest = 1 + splitMergeRecursive(startState, finishState)
 
+    cBest = 1 + splitMergeRecursive(startState, finishState)
     return cBest
 
 def splitMerge(startState, finishState):
@@ -351,7 +362,7 @@ all_tests = '''{1, 2, 3, 4, 10, 15}, {5, 11, 19} 		       3
 print(f"{len(all_tests)=}")
 all_tests1 = all_tests.split("\n")
 print(f"{len(all_tests1)=}")
-
+total_time_start = time.time()
 # for index, line in enumerate(all_tests1[79:80] + all_tests1[116:117] + all_tests1[39:40]):
 for index, line in enumerate(all_tests1):
     # print(index, line)
@@ -384,6 +395,9 @@ for index, line in enumerate(all_tests1):
     print(index, "splitMerge", arg0, arg1, arg2, "==", value)
     print(f"Took {time_diff:.3f} seconds {(time_diff/60):.3f} minutes {(time_diff/3600):.3f} hours.\n")
     assert value == arg2
+time_end = time.time()
+time_diff = time_end - total_time_start
+print(f"Total took {time_diff:.3f} seconds {(time_diff/60):.3f} minutes {(time_diff/3600):.3f} hours.\n")
 
 exit()
 
