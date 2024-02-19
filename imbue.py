@@ -28,46 +28,56 @@ for i in range(1024):
 def splitMergeSmartRec(sBin, fBin):
     global s_len, s_bin_to_sum_len, s_mask, s_bin_to_sum, s_sum_to_bin, f_len, f_bin_to_sum_len, f_mask, f_bin_to_sum, f_sum_to_bin, bin_to_cMembers, moves_sbin_to_fbin
 
+    print("splitMergeSmartRec", bin(sBin), bin(fBin), "sums", s_bin_to_sum[sBin], f_bin_to_sum[fBin])
+
     if moves_sbin_to_fbin[sBin][fBin] > -2:  # it's been computed
+        print("splitMergeSmartRec already computed", moves_sbin_to_fbin[sBin][fBin])
         return moves_sbin_to_fbin[sBin][fBin]
 
     if s_bin_to_sum[sBin] != f_bin_to_sum[fBin]:
         moves_sbin_to_fbin[sBin][fBin] = -1
+        print("splitMergeSmartRec impossible", moves_sbin_to_fbin[sBin][fBin])
         return -1
 
     # sBin can be broken apart 2^10=1024 ways max - we want find the minimum #
     # for each partition, find all fBin partitions that also work
 
-    cBest = 1000  # worst case combine into 1 pile and break apart into proper sized piles
     cBest = bin_to_cMembers[sBin] - 1 + bin_to_cMembers[fBin] - 1
     # !!! Make a set from enumeration to eliminate duplicates
     # !!! eliminate the ~ also - only do the search if s_bin_part < s_bin_part_inv
     # Can we break sBin in 2 pieces - that also have fBin broken in 2 pieces with matching counts
     for s_bin_part_raw in range(s_bin_to_sum_len):
+        # Only want subsets of sBin
+        if s_bin_part_raw & sBin != s_bin_part_raw:
+            continue
         # We only need the ones that are subsets of sBin
-        s_bin_part = s_bin_part_raw & sBin
+        s_bin_part = s_bin_part_raw
         s_bin_part_inv = (~s_bin_part) & sBin
-        if s_bin_part and s_bin_part_inv: # 0 size subsets don't work, have to be breaking it apart
-            print(f"{s_bin_part=} {s_bin_part_inv=} {sBin=}")
+        # 0 size subsets don't help, have to be breaking piles apart
+        # You only have to check it one way
+        # s_bin_part_raw & sBin == s_bin_part_raw
+        if s_bin_part and s_bin_part_inv and s_bin_part < s_bin_part_inv:
+            print(f"{s_bin_part=} {s_bin_part_inv=} {sBin=}", bin(s_bin_part), bin(s_bin_part_inv), bin(sBin))
             # Find all the fBin partitions that match the counts for the sBin partitions
             for f_bin_part in f_sum_to_bin.get(s_bin_to_sum[s_bin_part], []):
-                # Is the f_bin_part a subset of fBin?
+                # Is f_bin_part a subset of fBin?
                 if f_bin_part == f_bin_part & fBin:
                     f_bin_part_inv = (~f_bin_part) & fBin
-                    if f_bin_part_inv in f_sum_to_bin.get(s_bin_to_sum[s_bin_part_inv], []):
-                        print(f"{f_bin_part=} {f_bin_part_inv=}")
-                        cNew_part = splitMergeSmartRec(s_bin_part, f_bin_part)
-                        if cNew_part > -1:  #!!! Remove, this is always true, make it an assert
+                    if True: # Actually have to do both ways -> f_bin_part, f_bin_part_inv:
+                        if f_bin_part_inv in f_sum_to_bin.get(s_bin_to_sum[s_bin_part_inv], []):
+                            print(f"{f_bin_part=} {f_bin_part_inv=}")
+                            cNew_part = splitMergeSmartRec(s_bin_part, f_bin_part)
+                            print(f"{cNew_part=}")
+                            assert cNew_part > -1
                             cNew_part_inv = splitMergeSmartRec(s_bin_part_inv, f_bin_part_inv)
-                            if cNew_part_inv > -1:  #!!! Remove, this is always true, make it an assert
-                                if (cNew_part + cNew_part_inv) < cBest:
-                                    cBest = (cNew_part + cNew_part_inv)
+                            print(f"{cNew_part_inv=}")
+                            assert cNew_part_inv > -1
+                            if (cNew_part + cNew_part_inv) < cBest:
+                                cBest = (cNew_part + cNew_part_inv)
+                                print("cBest", cBest)
 
-    if cBest < 1000:
-        moves_sbin_to_fbin[sBin][fBin] = cBest
-    else:
-        moves_sbin_to_fbin[sBin][fBin] = -1
-
+    print("splitMergeSmartRec returns cBest=", cBest)
+    moves_sbin_to_fbin[sBin][fBin] = cBest
     return moves_sbin_to_fbin[sBin][fBin]
 
 def splitMergeSmart(sState, fState):
@@ -79,11 +89,11 @@ def splitMergeSmart(sState, fState):
     for i in range(s_bin_to_sum_len):
         i_sum = 0
         for j in range(s_len):
-            print(i, 1 << j)
             if i & (1 << j):
                 i_sum += sState[j]
         s_bin_to_sum[i] = i_sum
 
+    print("splitMergeSmart")
     print(sState)
     print(s_len)
     print(s_bin_to_sum_len)
@@ -97,7 +107,6 @@ def splitMergeSmart(sState, fState):
     for i in range(f_bin_to_sum_len):
         i_sum = 0
         for j in range(f_len):
-            print(i, 1 << j)
             if i & (1 << j):
                 i_sum += fState[j]
         f_bin_to_sum[i] = i_sum
@@ -127,32 +136,47 @@ def splitMergeSmart(sState, fState):
     # moves_sbin_to_dbin[sbin][dbin] = # split & merge to get sbin->dbin
     # -2 is uninitialized, -1 if impossible because sums don't match, 0 or more is # of moves
     global moves_sbin_to_fbin
-    moves_sbin_to_fbin = [[-2] * f_bin_to_sum_len] * s_bin_to_sum_len
+    moves_sbin_to_fbin = [[-2 for _ in range(f_bin_to_sum_len)] for _ in range(s_bin_to_sum_len)]
     # initialize 0 moves for matching start and finish piles
+    '''
+    !!! figure out why this doesn't work
     for i in range(s_len):
         for j in range(f_len):
             if sState[i] == fState[j]:
-                moves_sbin_to_fbin[i][j] = 0  # done with no moves
+                moves_sbin_to_fbin[1 << i][1 << j] = 0  # done with no moves
             else:
-                moves_sbin_to_fbin[i][j] = -1 # impossible
-
+                moves_sbin_to_fbin[1 << i][1 << j] = -1 # impossible
+    '''
     # Calculate How many moves to get sbin to dbin recursively
     return splitMergeSmartRec((1 << s_len) - 1, (1 << f_len) - 1)
 
+print(splitMergeSmart([1, 2, 3, 4, 5, 6], [7, 7, 7]), 3)
+exit()
+print(splitMergeSmart([2, 3, 4, 5], [7, 7]), 2)
+print(splitMergeSmart([4, 2], [2, 2, 2]), 1)
+print(splitMergeSmart([4, 4, 4, 4, 4], [5, 5, 5, 5]), 7)
+print(splitMergeSmart([3, 3, 3, 3, 8], [5, 5, 5, 5]), 7)
 
-print(splitMergeSmart([1, 2], [3]), 1)
-exit()
 print(splitMergeSmart([1, 2, 3, 4, 10, 15], [5, 11, 19]), 3)
-exit()
 print(splitMergeSmart([1, 2], [4]), -1)
 print(splitMergeSmart([1, 2], [1, 2]), 0)
-
+print(splitMergeSmart([1, 2], [3]), 1)
 print(splitMergeSmart([4, 2], [2, 2, 2]), 1)
 print(splitMergeSmart([1, 2, 3, 4, 5, 6], [7, 7, 7]), 3)
 print(splitMergeSmart([4, 4, 4, 4, 4], [5, 5, 5, 5]), 7)
 print(splitMergeSmart([3, 3, 3, 3, 8], [5, 5, 5, 5]), 7)
 
-
+assert splitMergeSmart([1, 2], [4]) == -1
+assert splitMergeSmart([1, 2], [1, 2]) == 0
+assert splitMergeSmart([1, 2], [3]) == 1
+assert splitMergeSmart([4, 2], [2, 2, 2]) == 1
+assert splitMergeSmart([1, 2, 3, 4, 5, 6], [7, 7, 7]) == 3
+assert splitMergeSmart([3, 4], [1, 6]) == 2
+assert splitMergeSmart([2], [2, 1]) == -1
+assert splitMergeSmart([4, 4, 4, 4, 4], [5, 5, 5, 5]) == 7
+assert splitMergeSmart([3, 3, 3, 3, 8], [5, 5, 5, 5]) == 7
+# assert splitMergeSmart([5, 10, 15, 20, 25, 30, 35, 40, 45, 50], [6, 11, 16, 21, 26, 31, 36, 41, 46, 41], 16)
+exit()
 
 # Switch to tuples - need them for caching - does it help/hurt?
 # Can I put the lists together better?
