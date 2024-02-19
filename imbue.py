@@ -1,11 +1,11 @@
 import time
 # SplitMerge Solution Times for solving all 123 problems from TopCoder
-# SplitMergeSmart(b_remove_duplidates = True): Total took 97.481 seconds 1.625 minutes 0.027 hours.
+# SplitMergeSmart(b_remove_duplidates = True): Total took 3.755 seconds 0.063 minutes 0.001 hours
 # SplitMergeSmart(b_remove_duplidates = False): Total took 97.481 seconds 1.625 minutes 0.027 hours.
 
-# b_remove_duplidates = False: is without pruning the idential piles
+# b_remove_duplidates = False: is without pruning the idential piles - which helps a ton
 # So 10 identical piles on each side is the worst case - all partitions work
-# 
+# Left option in just to show algo works
 
 # Each start/finish state of a list of piles can be represented by a binary field "bin"
 # 10 max list members - 10 bits - 2^10 = 1024 is all possible subsets
@@ -88,9 +88,11 @@ def splitMergeSmart(sState, fState, b_remove_duplicates=True):
     cTrials = 0
     # We don't have to do this - but it makes it much faster in the worst cases
     if b_remove_duplicates:
+        # If the start and finish don't have the same sums - impossible
         if sum(sState) != sum(fState):
             return -1
-
+        # Look for any pile in the start that matches a pile in the finish
+        # Remove it - can't do better than that
         i=0
         while i < len(sState):
             elem = sState[i]
@@ -156,11 +158,12 @@ def splitMergeSmart(sState, fState, b_remove_duplicates=True):
         f_sum_to_bin[i_sum] = new_list
     # print(f_sum_to_bin)
 
-    # moves_sbin_to_dbin[sbin][dbin] = # split & merge to get sbin->dbin
+    # moves_sbin_to_fbin[sbin][fbin] = # split & merge to get sbin->fbin
     # -2 is uninitialized, -1 if impossible because sums don't match, 0 or more is # of moves
     moves_sbin_to_fbin = [[-2 for _ in range(f_bin_to_sum_len)] for _ in range(s_bin_to_sum_len)]
-    # initialize 0 moves for matching start and finish piles
 
+    # Don't need this, but it might be a very tiny perf win
+    # initialize 0 moves for matching start and finish piles
     for i in range(s_len):
         for j in range(f_len):
             if sState[i] == fState[j]:
@@ -168,9 +171,10 @@ def splitMergeSmart(sState, fState, b_remove_duplicates=True):
             else:
                 moves_sbin_to_fbin[1 << i][1 << j] = -1 # impossible
 
-    # Calculate How many moves to get sbin to dbin recursively
+    # Calculate How many moves to get sbin to fbin recursively
     return splitMergeSmartRec((1 << s_len) - 1, (1 << f_len) - 1)
 
+# Quick check the logic works
 assert splitMergeSmart([2, 3, 4, 5], [7, 7]) == 2
 assert splitMergeSmart([1, 2, 3, 4, 10, 15], [5, 11, 19]) == 3
 assert splitMergeSmart([1, 2], [4]) == -1
@@ -182,43 +186,16 @@ assert splitMergeSmart([3, 4], [1, 6]) == 2
 assert splitMergeSmart([2], [2, 1]) == -1
 assert splitMergeSmart([4, 4, 4, 4, 4], [5, 5, 5, 5]) == 7
 assert splitMergeSmart([3, 3, 3, 3, 8], [5, 5, 5, 5]) == 7
-# assert splitMergeSmart([5, 10, 15, 20, 25, 30, 35, 40, 45, 50], [6, 11, 16, 21, 26, 31, 36, 41, 46, 41], 16)
 
-# Switch to tuples - need them for caching - does it help/hurt?
-# Can I put the lists together better?
-# sort the lists - for caching - how much does it hurt?
-# Could I cache input output to save time?  Just do 
-# check if I am repeating a test - removing 1, 1 - only need to check once
-print("hello")
-# 1 2 3 4 10 15   -> 5 11 19
-# Good 3 merges 1,10->11 4,15->19 2,3->5
-# Bad ? merges 1,4->5 2,10->12, 12->11,1, 1->
-
-# Merge together till each merged pile matches a merged pile in the output
+def splitMergeNotSmart(sState, fState):
+    return splitMergeSmart(sState, fState, b_remove_duplicates=False)
 
 worst_moves = 1000  # We know it's never this bad count of moves
 max_states = 10 # Max number of stacks
 
-# At 3 points in the code - the best decision is to do the greedy thing and return
-# But just in case it wasn't - I searched all other possibilities recursively
-
-old = '''
-# For deduping this would be faster in C but slower in python...
-    i = 0
-    j = 0
-    while i < len(startState) and j < len(finishState):
-        if startState[i] == finishState[j]:
-            del startState[i]
-            del finishState[j]
-            # don't increment i or j, everything slid down
-        elif startState[i] < finishState[j]:
-            i += 1
-        else:
-            # Must be startState[i] > finishState[j]
-            j += 1
-    '''
-
-def splitMergeRecursive(startState, finishState, be_greedy=False):
+def splitMergeRecursive(startState, finishState):
+    global cTrials
+    cTrials += 1
     # Remove matching elements between start and finish - can't do better than remove them
     i=0
     while i < len(startState):
@@ -237,7 +214,7 @@ def splitMergeRecursive(startState, finishState, be_greedy=False):
     cBest = worst_moves # Assume worse than the worst possible
 
     # Merge 2 input that equal an output
-    # Might have to check all options recursively
+    # Check all options recursively
     for i in range(len(startState)):
         if i > 0 and startState[i] == startState[i - 1]:
             continue
@@ -264,6 +241,8 @@ def splitMergeRecursive(startState, finishState, be_greedy=False):
     if cBest < worst_moves:  # We already recursed and are done if we found any
         return cBest
 
+    # Merge 2 output that equal an input
+    # Check all options recursively
     for i in range(len(finishState)):
         if i > 0 and finishState[i] == finishState[i - 1]:
             continue
@@ -309,61 +288,21 @@ def splitMergeRecursive(startState, finishState, be_greedy=False):
                     cNew = 1 + splitMergeRecursive(startStateCopy, finishStateCopy) # +1 for the move to split
                     if cNew < cBest:
                         cBest = cNew
-                        if be_greedy:
-                            return cBest # Actually you can't do any better than this greedy decision
 
     if cBest < worst_moves:  # We already recursed and are done if we found any
         return cBest
 
-    # Split a finish pile into 2 so that part of it equals a start pile
-    # Might have to check all options recursively
-    if 0: # if len(finishState) < max_states:  # Can't split if we already have max_states
-        for i in range(len(finishState)):
-            if i > 0 and finishState[i] == finishState[i - 1]:
-                continue
-            for j in range(len(startState)):
-                if j > 0 and startState[j] == startState[j - 1]:
-                    continue
-                # assert startState[j] != finishState[i] # Should have checked for this already
-                if finishState[i] > startState[j]:
-                    startStateCopy = startState.copy()
-                    finishStateCopy = finishState.copy()
-                    finishStateCopy[i] -= startState[j]  # effectively split, and remove the matching one
-                    startStateCopy.pop(j) # remove the matching one
-                    cNew = 1 + splitMergeRecursive(startStateCopy, finishStateCopy) # +1 for the move to split
-                    if cNew < cBest:
-                        cBest = cNew
-                        if be_greedy:
-                            return cBest # Actually you can't do any better than this greedy decision
-
-    if cBest < worst_moves:  # We already recursed and are done if we found any
-        return cBest
-
-    if False:
-        # Merge 2 largest piles
-        if startState[0] < finishState[0]:
-            startState[1] += startState[0]
-            del startState[0]
-        else:
-            finishState[1] += finishState[0]
-            del finishState[0]
-
-        # Merge 2 smallest piles
-        if startState[0] < finishState[0]:
-            startState[1] += startState[0]
-            del startState[0]
-        else:
-            finishState[1] += finishState[0]
-            del finishState[0]
-    else:
-        # We could recurse on all possible pairs, but I don't think we need to
-        startState[len(startState) - 2] += startState[len(startState) - 1]
-        del startState[len(startState) - 1]
+    # Merge 2 largest piles
+    # We could recurse on all possible pairs, but I don't think we need to, seems like it's the best option
+    startState[len(startState) - 2] += startState[len(startState) - 1]
+    del startState[len(startState) - 1]
 
     cBest = 1 + splitMergeRecursive(startState, finishState)
     return cBest
 
 def splitMerge(startState, finishState):
+    global cTrials
+    cTrials = 0
     # Impossible if the sums don't match
     if sum(startState) != sum(finishState):
         return -1
@@ -372,15 +311,6 @@ def splitMerge(startState, finishState):
 
     # return splitMergeRecursive(tuple(startState), tuple(finishState))
     return splitMergeRecursive(startState, finishState)
-
-print(splitMerge([1, 2, 3, 4, 10, 15], [5, 11, 19]), 3)
-print(splitMerge([1, 2], [4]), -1)
-print(splitMerge([1, 2], [1, 2]), 0)
-print(splitMerge([1, 2], [3]), 1)
-print(splitMerge([4, 2], [2, 2, 2]), 1)
-print(splitMerge([1, 2, 3, 4, 5, 6], [7, 7, 7]), 3)
-print(splitMerge([4, 4, 4, 4, 4], [5, 5, 5, 5]), 7)
-print(splitMerge([3, 3, 3, 3, 8], [5, 5, 5, 5]), 7)
 
 assert splitMerge([1, 2], [4]) == -1
 assert splitMerge([1, 2], [1, 2]) == 0
@@ -391,7 +321,6 @@ assert splitMerge([3, 4], [1, 6]) == 2
 assert splitMerge([2], [2, 1]) == -1
 assert splitMerge([4, 4, 4, 4, 4], [5, 5, 5, 5]) == 7
 assert splitMerge([3, 3, 3, 3, 8], [5, 5, 5, 5]) == 7
-# assert splitMerge([5, 10, 15, 20, 25, 30, 35, 40, 45, 50], [6, 11, 16, 21, 26, 31, 36, 41, 46, 41], 16)
 
 all_tests = '''{1, 2, 3, 4, 10, 15}, {5, 11, 19} 		       3
 {5, 1, 2, 3, 4, 10, 15}, {5, 11, 19, 1, 4} 		       4
@@ -518,52 +447,50 @@ all_tests = '''{1, 2, 3, 4, 10, 15}, {5, 11, 19} 		       3
 {5, 10, 15, 20, 25, 30, 35, 40, 45, 50}, {6, 11, 16, 21, 26, 31, 36, 41, 46, 41}		16		
 '''
 
-# print("all_tests:", all_tests[:30])
-print(f"{len(all_tests)=}")
-all_tests1 = all_tests.split("\n")
-print(f"{len(all_tests1)=}")
-total_time_start = time.time()
-# for index, line in enumerate(all_tests1[79:80] + all_tests1[116:117] + all_tests1[39:40]):
-for index, line in enumerate(all_tests1):
-    # print(index, line)
-    test = line.strip()
-    if len(test) == 0:
-        continue
-    # print(index, test)
-    test = test.split("\t\t")
-    arg2 = int(test[1])
-    # print(f"{len(test)=}", test)
-    args = test[0]
-    arg0 = args[(args.find('{') + 1): args.find('}')]
-    # print(arg0)
-    arg1 = args[len(arg0) + 2:] # .find('{') + 1):]  args.find('}')
-    # print(arg1)
-    arg1 = arg1[(arg1.find('{') + 1): arg1.find('}')]
-    # print(arg1)
-    arg0 = arg0.split(',')
-    arg0 = [int(x) for x in arg0]
-    arg1 = arg1.split(',')
-    arg1 = [int(x) for x in arg1]
-    # print(arg0)
-    # print(arg1)
-    # print(arg2)
-    time_start = time.time()
-    print(index, "splitMerge", arg0, arg1, arg2)
-    value = splitMergeSmart(arg0, arg1)
+def TestSplitMerge(TestSplitMergeFunc, num_tests=400):
+    all_tests1 = all_tests.split("\n")
+    all_tests1 = [line for line in all_tests1 if len(line.strip()) > 0]
+    print(f"{len(all_tests1)=}")
+    total_time_start = time.time()
+    # for index, line in enumerate(all_tests1[79:80] + all_tests1[116:117] + all_tests1[39:40]):
+    for index, line in enumerate(all_tests1[:num_tests]):
+        # print(index, line)
+        test = line.strip()
+        if len(test) == 0:
+            continue
+        # print(index, test)
+        test = test.split("\t\t")
+        arg2 = int(test[1])
+        # print(f"{len(test)=}", test)
+        args = test[0]
+        arg0 = args[(args.find('{') + 1): args.find('}')]
+        # print(arg0)
+        arg1 = args[len(arg0) + 2:] # .find('{') + 1):]  args.find('}')
+        # print(arg1)
+        arg1 = arg1[(arg1.find('{') + 1): arg1.find('}')]
+        # print(arg1)
+        arg0 = arg0.split(',')
+        arg0 = [int(x) for x in arg0]
+        arg1 = arg1.split(',')
+        arg1 = [int(x) for x in arg1]
+        # print(arg0)
+        # print(arg1)
+        # print(arg2)
+        time_start = time.time()
+        print(index, TestSplitMergeFunc.__name__, arg0, arg1, arg2)
+        value = TestSplitMergeFunc(arg0, arg1)
+        time_end = time.time()
+        time_diff = time_end - time_start
+        print(index, TestSplitMergeFunc.__name__, arg0, arg1, arg2, "==", value)
+        print(f"{cTrials=:,}")
+        print(f"Took {time_diff:.3f} seconds {(time_diff/60):.3f} minutes {(time_diff/3600):.3f} hours.\n")
+        assert value == arg2
     time_end = time.time()
-    time_diff = time_end - time_start
-    print(index, "splitMerge", arg0, arg1, arg2, "==", value)
-    print(f"{cTrials=:,}")
-    print(f"Took {time_diff:.3f} seconds {(time_diff/60):.3f} minutes {(time_diff/3600):.3f} hours.\n")
-    assert value == arg2
-time_end = time.time()
-time_diff = time_end - total_time_start
-print(f"Total took {time_diff:.3f} seconds {(time_diff/60):.3f} minutes {(time_diff/3600):.3f} hours.\n")
-
-exit()
+    time_diff = time_end - total_time_start
+    print(f"Total took {time_diff:.3f} seconds {(time_diff/60):.3f} minutes {(time_diff/3600):.3f} hours.\n")
 
 # int dp[1050][1050];
-dp = [[-1] * 1050] * 1050
+dp = [[-1 for _ in range(1050)] for _ in range(1050)]
 print("dp len", len(dp), len(dp[0]))
 n = 0
 m = 0
@@ -574,6 +501,8 @@ a = []
 b = []
 
 def rec(x, y):
+    global cTrials
+    cTrials += 1
     global dp,n,m,ka0,ka1,a,b
     # Dynamic programming - Has it been computed already?  Return it
     if dp[x][y] > -1:
@@ -623,6 +552,8 @@ def rec(x, y):
     return ret
 
 def minMoves(A, B):
+    global cTrials
+    cTrials = 0
     global dp,ka0,ka1,a,b,n,m
     n = 0
     m = 0
@@ -648,10 +579,15 @@ def minMoves(A, B):
         return -1
     for i in range(1050): 
         for j in range(1050): 
-            dp[i][j]=-1;
+            dp[i][j]=-1
     return rec(0,0)
 
+TestSplitMerge(splitMergeSmart)
+TestSplitMerge(minMoves)
+TestSplitMerge(splitMergeNotSmart)
+TestSplitMerge(splitMerge)
 
+exit()
 # print("all_tests:", all_tests[:30])
 print(f"{len(all_tests)=}")
 all_tests1 = all_tests.split("\n")
