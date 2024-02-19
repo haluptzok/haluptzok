@@ -1,10 +1,18 @@
 import time
+# SplitMerge Solution Times for solving all 123 problems from TopCoder
+# SplitMergeSmart(b_remove_duplidates = True): Total took 97.481 seconds 1.625 minutes 0.027 hours.
+# SplitMergeSmart(b_remove_duplidates = False): Total took 97.481 seconds 1.625 minutes 0.027 hours.
+
+# b_remove_duplidates = False: is without pruning the idential piles
+# So 10 identical piles on each side is the worst case - all partitions work
+# 
 
 # Each start/finish state of a list of piles can be represented by a binary field "bin"
 # 10 max list members - 10 bits - 2^10 = 1024 is all possible subsets
 # "bin" having sBin[index] in it is represented by or-ing in (1 << index), index is 0 to 9 inclusive
 # s_bin_to_sum[bin], such that s_sum[3] -> s_sum[00011] -> s_state[0] + s_state[1]
 
+cTrials = 0            # Just for fun, how many calls to SplitMergeSmartRec we tried
 moves_sbin_to_fbin = [[-2]] # Count of split and merge to convert sbin to fbin
 s_len = 0              # length of sBin - how many piles in start
 s_bin_to_sum_len = 0   # 1 << s_len = 2^s_len = all possible subsets
@@ -16,7 +24,7 @@ f_bin_to_sum_len = 0
 f_mask = 0
 f_bin_to_sum = [0]
 f_sum_to_bin = {}
-bin_to_cMembers = [0] * 1024  # How many members are in the bin  0101 => 2
+bin_to_cMembers = [0] * 1024  # How many members are in the bin, ex 0101 => 2
 for i in range(1024):
     i_sum = 0
     for j in range(10):
@@ -24,64 +32,79 @@ for i in range(1024):
             i_sum += 1
     bin_to_cMembers[i] = i_sum
 
-
 def splitMergeSmartRec(sBin, fBin):
-    global s_len, s_bin_to_sum_len, s_mask, s_bin_to_sum, s_sum_to_bin, f_len, f_bin_to_sum_len, f_mask, f_bin_to_sum, f_sum_to_bin, bin_to_cMembers, moves_sbin_to_fbin
-
-    print("splitMergeSmartRec", bin(sBin), bin(fBin), "sums", s_bin_to_sum[sBin], f_bin_to_sum[fBin])
+    global s_len, s_bin_to_sum_len, s_mask, s_bin_to_sum, s_sum_to_bin, f_len, f_bin_to_sum_len, f_mask, f_bin_to_sum, f_sum_to_bin, bin_to_cMembers, moves_sbin_to_fbin, cTrials
+    cTrials +=1
+    # print("splitMergeSmartRec", bin(sBin), bin(fBin), "sums", s_bin_to_sum[sBin], f_bin_to_sum[fBin])
 
     if moves_sbin_to_fbin[sBin][fBin] > -2:  # it's been computed
-        print("splitMergeSmartRec already computed", moves_sbin_to_fbin[sBin][fBin])
+        # print("splitMergeSmartRec already computed", moves_sbin_to_fbin[sBin][fBin])
         return moves_sbin_to_fbin[sBin][fBin]
 
     if s_bin_to_sum[sBin] != f_bin_to_sum[fBin]:
         moves_sbin_to_fbin[sBin][fBin] = -1
-        print("splitMergeSmartRec impossible", moves_sbin_to_fbin[sBin][fBin])
+        # print("splitMergeSmartRec impossible", moves_sbin_to_fbin[sBin][fBin])
         return -1
 
     # sBin can be broken apart 2^10=1024 ways max - we want find the minimum #
     # for each partition, find all fBin partitions that also work
 
     cBest = bin_to_cMembers[sBin] - 1 + bin_to_cMembers[fBin] - 1
-    # !!! Make a set from enumeration to eliminate duplicates
-    # !!! eliminate the ~ also - only do the search if s_bin_part < s_bin_part_inv
-    # Can we break sBin in 2 pieces - that also have fBin broken in 2 pieces with matching counts
-    for s_bin_part_raw in range(s_bin_to_sum_len):
-        # Only want subsets of sBin
-        if s_bin_part_raw & sBin != s_bin_part_raw:
+    # Can we break sBin in 2 pieces - and also have fBin broken in 2 pieces with matching sums
+    for s_bin_part in range(1, s_bin_to_sum_len - 1): # all possible breaks
+        # Only want subsets of sBin, don't waste time on other searches, like creating the "set" of unique partitions
+        if s_bin_part & sBin != s_bin_part:
             continue
-        # We only need the ones that are subsets of sBin
-        s_bin_part = s_bin_part_raw
+        # The other half is the inverse, masked off to the relevant bits
         s_bin_part_inv = (~s_bin_part) & sBin
         # 0 size subsets don't help, have to be breaking piles apart
-        # You only have to check it one way
-        # s_bin_part_raw & sBin == s_bin_part_raw
+        # You only have to check breaking half one way, hence the s_bin_part < s_bin_part_inv
         if s_bin_part and s_bin_part_inv and s_bin_part < s_bin_part_inv:
-            print(f"{s_bin_part=} {s_bin_part_inv=} {sBin=}", bin(s_bin_part), bin(s_bin_part_inv), bin(sBin))
+            # print(f"{s_bin_part=} {s_bin_part_inv=} {sBin=}", bin(s_bin_part), bin(s_bin_part_inv), bin(sBin))
             # Find all the fBin partitions that match the counts for the sBin partitions
             for f_bin_part in f_sum_to_bin.get(s_bin_to_sum[s_bin_part], []):
                 # Is f_bin_part a subset of fBin?
                 if f_bin_part == f_bin_part & fBin:
                     f_bin_part_inv = (~f_bin_part) & fBin
-                    if True: # Actually have to do both ways -> f_bin_part, f_bin_part_inv:
-                        if f_bin_part_inv in f_sum_to_bin.get(s_bin_to_sum[s_bin_part_inv], []):
-                            print(f"{f_bin_part=} {f_bin_part_inv=}")
-                            cNew_part = splitMergeSmartRec(s_bin_part, f_bin_part)
-                            print(f"{cNew_part=}")
-                            assert cNew_part > -1
-                            cNew_part_inv = splitMergeSmartRec(s_bin_part_inv, f_bin_part_inv)
-                            print(f"{cNew_part_inv=}")
-                            assert cNew_part_inv > -1
-                            if (cNew_part + cNew_part_inv) < cBest:
-                                cBest = (cNew_part + cNew_part_inv)
-                                print("cBest", cBest)
+                    # Actually have to do both ways -> f_bin_part, f_bin_part_inv to allow both s_bin pairing options
+                    if f_bin_part_inv in f_sum_to_bin.get(s_bin_to_sum[s_bin_part_inv], []):
+                        # print(f"{f_bin_part=} {f_bin_part_inv=}")
+                        cNew_part = splitMergeSmartRec(s_bin_part, f_bin_part)
+                        # print(f"{cNew_part=}")
+                        # assert cNew_part > -1
+                        cNew_part_inv = splitMergeSmartRec(s_bin_part_inv, f_bin_part_inv)
+                        # print(f"{cNew_part_inv=}")
+                        # assert cNew_part_inv > -1
+                        if (cNew_part + cNew_part_inv) < cBest:
+                            cBest = (cNew_part + cNew_part_inv)
+                            # print("cBest", cBest)
 
-    print("splitMergeSmartRec returns cBest=", cBest)
+    # print("splitMergeSmartRec returns cBest=", cBest)
     moves_sbin_to_fbin[sBin][fBin] = cBest
-    return moves_sbin_to_fbin[sBin][fBin]
+    return cBest
 
-def splitMergeSmart(sState, fState):
-    global s_len, s_bin_to_sum_len, s_mask, s_bin_to_sum, s_sum_to_bin, f_len, f_bin_to_sum_len, f_mask, f_bin_to_sum, f_sum_to_bin, bin_to_cMembers, moves_sbin_to_fbin
+def splitMergeSmart(sState, fState, b_remove_duplicates=True):
+    global s_len, s_bin_to_sum_len, s_mask, s_bin_to_sum, s_sum_to_bin, f_len, f_bin_to_sum_len, f_mask, f_bin_to_sum, f_sum_to_bin, bin_to_cMembers, moves_sbin_to_fbin, cTrials
+    cTrials = 0
+    # We don't have to do this - but it makes it much faster in the worst cases
+    if b_remove_duplicates:
+        if sum(sState) != sum(fState):
+            return -1
+
+        i=0
+        while i < len(sState):
+            elem = sState[i]
+            if elem in fState:
+                sState.remove(elem)
+                fState.remove(elem)
+                # don't increment i, everything slid down
+            else:
+                i += 1
+
+    # Are we done?
+    if len(sState) == 0:
+        return 0
+
     s_len = len(sState)
     s_bin_to_sum_len = 1 << s_len
     s_mask = (1 << s_len) - 1
@@ -93,12 +116,12 @@ def splitMergeSmart(sState, fState):
                 i_sum += sState[j]
         s_bin_to_sum[i] = i_sum
 
-    print("splitMergeSmart")
-    print(sState)
-    print(s_len)
-    print(s_bin_to_sum_len)
-    print(f"{s_mask=}", s_mask, bin(s_mask))
-    print(s_bin_to_sum)
+    # print("splitMergeSmart")
+    # print(sState)
+    # print(s_len)
+    # print(s_bin_to_sum_len)
+    # print(f"{s_mask=}", s_mask, bin(s_mask))
+    # print(s_bin_to_sum)
 
     f_len = len(fState)
     f_bin_to_sum_len = 1 << f_len
@@ -111,61 +134,45 @@ def splitMergeSmart(sState, fState):
                 i_sum += fState[j]
         f_bin_to_sum[i] = i_sum
 
-    print(fState)
-    print(f_len)
-    print(f_bin_to_sum_len)
-    print(f"{f_mask=}", f_mask, bin(f_mask))
-    print(f_bin_to_sum)
+    # print(fState)
+    # print(f_len)
+    # print(f_bin_to_sum_len)
+    # print(f"{f_mask=}", f_mask, bin(f_mask))
+    # print(f_bin_to_sum)
 
     s_sum_to_bin = {} # map a sum of members all the combinations that give that sum
     for i, i_sum in enumerate(s_bin_to_sum):
-        print("s i i_sum", i, i_sum)
+        # print("s i i_sum", i, i_sum)
         new_list = s_sum_to_bin.get(i_sum, []) # get the list for i_sum
         new_list.append(i) # add i into the list
         s_sum_to_bin[i_sum] = new_list
-    print(s_sum_to_bin)
+    # print(s_sum_to_bin)
 
     f_sum_to_bin = {} # map a sum of members all the combinations that give that sum
     for i, i_sum in enumerate(f_bin_to_sum):
-        print("f i i_sum", i, i_sum)
+        # print("f i i_sum", i, i_sum)
         new_list = f_sum_to_bin.get(i_sum, []) # get the list for i_sum
         new_list.append(i) # add i into the list
         f_sum_to_bin[i_sum] = new_list
-    print(f_sum_to_bin)
+    # print(f_sum_to_bin)
 
     # moves_sbin_to_dbin[sbin][dbin] = # split & merge to get sbin->dbin
     # -2 is uninitialized, -1 if impossible because sums don't match, 0 or more is # of moves
-    global moves_sbin_to_fbin
     moves_sbin_to_fbin = [[-2 for _ in range(f_bin_to_sum_len)] for _ in range(s_bin_to_sum_len)]
     # initialize 0 moves for matching start and finish piles
-    '''
-    !!! figure out why this doesn't work
+
     for i in range(s_len):
         for j in range(f_len):
             if sState[i] == fState[j]:
                 moves_sbin_to_fbin[1 << i][1 << j] = 0  # done with no moves
             else:
                 moves_sbin_to_fbin[1 << i][1 << j] = -1 # impossible
-    '''
+
     # Calculate How many moves to get sbin to dbin recursively
     return splitMergeSmartRec((1 << s_len) - 1, (1 << f_len) - 1)
 
-print(splitMergeSmart([1, 2, 3, 4, 5, 6], [7, 7, 7]), 3)
-exit()
-print(splitMergeSmart([2, 3, 4, 5], [7, 7]), 2)
-print(splitMergeSmart([4, 2], [2, 2, 2]), 1)
-print(splitMergeSmart([4, 4, 4, 4, 4], [5, 5, 5, 5]), 7)
-print(splitMergeSmart([3, 3, 3, 3, 8], [5, 5, 5, 5]), 7)
-
-print(splitMergeSmart([1, 2, 3, 4, 10, 15], [5, 11, 19]), 3)
-print(splitMergeSmart([1, 2], [4]), -1)
-print(splitMergeSmart([1, 2], [1, 2]), 0)
-print(splitMergeSmart([1, 2], [3]), 1)
-print(splitMergeSmart([4, 2], [2, 2, 2]), 1)
-print(splitMergeSmart([1, 2, 3, 4, 5, 6], [7, 7, 7]), 3)
-print(splitMergeSmart([4, 4, 4, 4, 4], [5, 5, 5, 5]), 7)
-print(splitMergeSmart([3, 3, 3, 3, 8], [5, 5, 5, 5]), 7)
-
+assert splitMergeSmart([2, 3, 4, 5], [7, 7]) == 2
+assert splitMergeSmart([1, 2, 3, 4, 10, 15], [5, 11, 19]) == 3
 assert splitMergeSmart([1, 2], [4]) == -1
 assert splitMergeSmart([1, 2], [1, 2]) == 0
 assert splitMergeSmart([1, 2], [3]) == 1
@@ -176,7 +183,6 @@ assert splitMergeSmart([2], [2, 1]) == -1
 assert splitMergeSmart([4, 4, 4, 4, 4], [5, 5, 5, 5]) == 7
 assert splitMergeSmart([3, 3, 3, 3, 8], [5, 5, 5, 5]) == 7
 # assert splitMergeSmart([5, 10, 15, 20, 25, 30, 35, 40, 45, 50], [6, 11, 16, 21, 26, 31, 36, 41, 46, 41], 16)
-exit()
 
 # Switch to tuples - need them for caching - does it help/hurt?
 # Can I put the lists together better?
@@ -543,10 +549,11 @@ for index, line in enumerate(all_tests1):
     # print(arg2)
     time_start = time.time()
     print(index, "splitMerge", arg0, arg1, arg2)
-    value = splitMerge(arg0, arg1)
+    value = splitMergeSmart(arg0, arg1)
     time_end = time.time()
     time_diff = time_end - time_start
     print(index, "splitMerge", arg0, arg1, arg2, "==", value)
+    print(f"{cTrials=:,}")
     print(f"Took {time_diff:.3f} seconds {(time_diff/60):.3f} minutes {(time_diff/3600):.3f} hours.\n")
     assert value == arg2
 time_end = time.time()
