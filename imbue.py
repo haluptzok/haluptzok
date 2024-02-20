@@ -1,7 +1,9 @@
 import time
-# SplitMerge Solution Times for solving all 123 problems from TopCoder
-# SplitMergeSmart(b_remove_duplidates = True): Total took 3.755 seconds 0.063 minutes 0.001 hours
-# SplitMergeSmart(b_remove_duplidates = False): Total took 97.481 seconds 1.625 minutes 0.027 hours.
+# SplitMerge Solution Times for solving all 123 problems from TopCoder:
+# SplitMergeSmart(b_remove_duplidates = True): my dynamic programming approach - Total took 2.515 seconds 0.042 minutes 0.001 hours.
+# SplitMergeNotSmart(b_remove_duplidates = False): my dynamic programming approach - Total took 94.735 seconds 1.579 minutes 0.026 hours.
+# splitMerge - my greedy naive approach - Total took 9530.134 seconds 158.836 minutes 2.647 hours.
+# minMoves - topcoder solution - Total took 250.260 seconds 4.171 minutes 0.070 hours.
 
 # b_remove_duplidates = False: is without pruning the idential piles - which helps a ton
 # So 10 identical piles on each side is the worst case - all partitions work
@@ -51,15 +53,17 @@ def splitMergeSmartRec(sBin, fBin):
 
     cBest = bin_to_cMembers[sBin] - 1 + bin_to_cMembers[fBin] - 1
     # Can we break sBin in 2 pieces - and also have fBin broken in 2 pieces with matching sums
-    for s_bin_part in range(1, s_bin_to_sum_len - 1): # all possible breaks
+    # Was this: for s_bin_part in range(1, s_bin_to_sum_len - 1): # all possible non-empty breaks
+    # But really we only need to enumerate all subsets of sBin, below is quick hack to eliminate some of the extra enumeration
+    for s_bin_part in range((sBin & (~sBin + 1)), sBin): # all possible breaks
         # Only want subsets of sBin, don't waste time on other searches, like creating the "set" of unique partitions
-        if s_bin_part & sBin != s_bin_part:
+        if (s_bin_part & sBin != s_bin_part) or s_bin_part == 0:
             continue
         # The other half is the inverse, masked off to the relevant bits
         s_bin_part_inv = (~s_bin_part) & sBin
         # 0 size subsets don't help, have to be breaking piles apart
         # You only have to check breaking half one way, hence the s_bin_part < s_bin_part_inv
-        if s_bin_part and s_bin_part_inv and s_bin_part < s_bin_part_inv:
+        if s_bin_part_inv and s_bin_part < s_bin_part_inv:
             # print(f"{s_bin_part=} {s_bin_part_inv=} {sBin=}", bin(s_bin_part), bin(s_bin_part_inv), bin(sBin))
             # Find all the fBin partitions that match the counts for the sBin partitions
             for f_bin_part in f_sum_to_bin.get(s_bin_to_sum[s_bin_part], []):
@@ -522,8 +526,8 @@ def rec(x, y):
         if (x&(1<<i)): # if x contains that element - skip it
             continue
         ret=min(ret,rec(x+(1<<i),y)+s)  # if x doesn't contain it, solve for x having element i added in
-    for j in range(m):
-        if (y&(1<<j)): 
+    for j in range(m): # for every element index j in B
+        if (y&(1<<j)): # if y contains that element - skip it
             continue
         if (st==b[j]): # if adding element j of B to y makes it's sum equal to x's elements from A 
             ret = min(ret, rec(x,y+(1<<j)))
@@ -583,8 +587,8 @@ def minMoves(A, B):
     return rec(0,0)
 
 TestSplitMerge(splitMergeSmart)
-TestSplitMerge(minMoves)
 TestSplitMerge(splitMergeNotSmart)
+TestSplitMerge(minMoves)
 TestSplitMerge(splitMerge)
 
 exit()
