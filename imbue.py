@@ -1,13 +1,13 @@
 import time
-# SplitMerge Solution Times for solving all 123 problems from TopCoder:
-# SplitMergeSmart(b_remove_duplidates = True): my dynamic programming approach - Total took 2.515 seconds 0.042 minutes 0.001 hours.
-# SplitMergeNotSmart(b_remove_duplidates = False): my dynamic programming approach - Total took 94.735 seconds 1.579 minutes 0.026 hours.
-# splitMerge - my greedy naive approach - Total took 9530.134 seconds 158.836 minutes 2.647 hours.
-# minMoves - topcoder solution - Total took 250.260 seconds 4.171 minutes 0.070 hours.
+# SplitMerge Solution Times for solving all 123 test problems from TopCoder:
+# SplitMergeSmart(b_remove_duplicates = True): my dynamic programming approach - Total took 2.515 seconds 0.042 minutes 0.001 hours.
+# SplitMergeNotSmart(b_remove_duplicates = False): my dynamic programming approach - Total took 94.735 seconds 1.579 minutes 0.026 hours.
+# splitMerge - my greedy naive approach - Total took 9295.676 seconds 154.928 minutes 2.582 hours.
+# minMoves - topcoder solution - Total took 252.914 seconds 4.215 minutes 0.070 hours.
 
 # b_remove_duplidates = False: is without pruning the idential piles - which helps a ton
 # So 10 identical piles on each side is the worst case - all partitions work
-# Left option in just to show algo works
+# I left the option in just to show algo works whithout the short cut
 
 # Each start/finish state of a list of piles can be represented by a binary field "bin"
 # 10 max list members - 10 bits - 2^10 = 1024 is all possible subsets
@@ -220,6 +220,7 @@ def splitMergeRecursive(startState, finishState):
     # Merge 2 input that equal an output
     # Check all options recursively
     for i in range(len(startState)):
+        # Only check unique options
         if i > 0 and startState[i] == startState[i - 1]:
             continue
         for j in range(i + 1, len(startState)):
@@ -493,6 +494,8 @@ def TestSplitMerge(TestSplitMergeFunc, num_tests=400):
     time_diff = time_end - total_time_start
     print(f"Total took {time_diff:.3f} seconds {(time_diff/60):.3f} minutes {(time_diff/3600):.3f} hours.\n")
 
+# Not my solution - this is a C++ solution converted to python from topCoder
+
 # int dp[1050][1050];
 dp = [[-1 for _ in range(1050)] for _ in range(1050)]
 print("dp len", len(dp), len(dp[0]))
@@ -523,7 +526,7 @@ def rec(x, y):
     else:
         s=0
     for i in range(n): # for every element index i in A
-        if (x&(1<<i)): # if x contains that element - skip it
+        if (x&(1<<i)): # if x already contains that element - skip it
             continue
         ret=min(ret,rec(x+(1<<i),y)+s)  # if x doesn't contain it, solve for x having element i added in
     for j in range(m): # for every element index j in B
@@ -590,7 +593,6 @@ TestSplitMerge(splitMergeSmart)
 TestSplitMerge(splitMergeNotSmart)
 TestSplitMerge(minMoves)
 TestSplitMerge(splitMerge)
-
 exit()
 # print("all_tests:", all_tests[:30])
 print(f"{len(all_tests)=}")
