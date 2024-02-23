@@ -78,7 +78,7 @@ class clsSplitMergeSmart:
         self.moves_sbin_to_fbin[sBin][fBin] = cBest
         return cBest
 
-    def splitMergeSmart(self, sState, fState, b_remove_duplicates=True):
+    def __call__(self, sState, fState, b_remove_duplicates=True):
         global cTrials
         cTrials = 0
         # We don't have to do this - but it makes it much faster in the worst cases
@@ -154,7 +154,7 @@ class clsSplitMergeSmart:
 
 def splitMergeSmart(sState, fState, b_remove_duplicates=True):
     mySplitMergeSmart = clsSplitMergeSmart()
-    return mySplitMergeSmart.splitMergeSmart(sState, fState, b_remove_duplicates=b_remove_duplicates)
+    return mySplitMergeSmart(sState, fState, b_remove_duplicates=b_remove_duplicates)
 
 # Quick check the logic works
 assert splitMergeSmart([2, 3, 4, 5], [7, 7]) == 2
