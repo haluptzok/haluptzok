@@ -473,8 +473,7 @@ def TestSplitMerge(TestSplitMergeFunc, num_tests=400):
     print(f"Total took {time_diff:.3f} seconds {(time_diff/60):.3f} minutes {(time_diff/3600):.3f} hours.\n")
 
 # Not my solution - this is a C++ solution converted to python from topCoder
-
-# int dp[1050][1050];
+# https://github.com/sky58/TopcoderSRM_AcceptedCodes/blob/master/307-1h.cpp
 dp = [[-1 for _ in range(1050)] for _ in range(1050)]
 n = 0
 m = 0
@@ -618,7 +617,7 @@ mapa = [{},{}]
 q = [ [[]], [[]] ]
 # VVI pom;
 pom = [[]] # vector of vector of int
-
+# https://community.topcoder.com/stat?c=problem_solution&cr=7442498&rd=9987&pm=6449
 def minMoves2(start, end):
     global mapa,q,pom
     start = sorted(start)
