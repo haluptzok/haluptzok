@@ -16,16 +16,7 @@ import time
 
 cTrials = 0            # Just for fun, how many calls to SplitMergeSmartRec we tried
 class clsSplitMergeSmart:
-    # def __init__(self, sState, fState):
-    moves_sbin_to_fbin = [[-2]] # Count of split and merge to convert sbin to fbin
-    s_len = 0              # length of sBin - how many piles in start
-    s_bin_to_sum_len = 0   # 1 << s_len = 2^s_len = all possible subsets
-    s_bin_to_sum = [0]     # binary mask of what values are set, sum up the members
-    s_sum_to_bin = {}      # Need a has from sum to list of all "bin" that have that sum
-    f_len = 0
-    f_bin_to_sum_len = 0
-    f_bin_to_sum = [0]
-    f_sum_to_bin = {}
+    # Create once and share among all class instances
     bin_to_cMembers = [0] * 1024  # How many members are in the bin, ex 0101 => 2
     for i in range(1024):
         i_sum = 0
@@ -485,7 +476,6 @@ def TestSplitMerge(TestSplitMergeFunc, num_tests=400):
 
 # int dp[1050][1050];
 dp = [[-1 for _ in range(1050)] for _ in range(1050)]
-print("dp len", len(dp), len(dp[0]))
 n = 0
 m = 0
 # int ka0[1050],ka1[1050];
