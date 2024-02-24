@@ -24,6 +24,18 @@ class clsSplitMergeSmart:
             if i & (1 << j):
                 i_sum += 1
         bin_to_cMembers[i] = i_sum
+    bin_to_subset = [[] for _ in range(1024)]
+    for sBin in range(1024):
+        for s_bin_part in range((sBin & (~sBin + 1)), sBin): # smallest single bit set, to all bits set
+            # Only want subsets of sBin, don't waste time on other searches, like creating the "set" of unique partitions
+            if (s_bin_part & sBin != s_bin_part) or s_bin_part == 0:
+                continue
+            # The other half is the inverse, masked off to the relevant bits
+            s_bin_part_inv = (~s_bin_part) & sBin
+            # 0 size subsets don't help, have to be breaking piles apart
+            # You only have to check breaking half one way, hence the s_bin_part < s_bin_part_inv
+            if s_bin_part_inv and s_bin_part < s_bin_part_inv:
+                bin_to_subset[sBin].append(s_bin_part)
 
     def splitMergeSmartRec(self, sBin, fBin):
         global cTrials
@@ -34,11 +46,6 @@ class clsSplitMergeSmart:
             # print("splitMergeSmartRec already computed", moves_sbin_to_fbin[sBin][fBin])
             return self.moves_sbin_to_fbin[sBin][fBin]
 
-        if self.s_bin_to_sum[sBin] != self.f_bin_to_sum[fBin]:
-            self.moves_sbin_to_fbin[sBin][fBin] = -1
-            # print("splitMergeSmartRec impossible", moves_sbin_to_fbin[sBin][fBin])
-            return -1
-
         # sBin can be broken apart 2^10=1024 ways max - we want find the minimum #
         # for each partition, find all fBin partitions that also work
 
@@ -46,33 +53,27 @@ class clsSplitMergeSmart:
         # Can we break sBin in 2 pieces - and also have fBin broken in 2 pieces with matching sums
         # Was: for s_bin_part in range(1, s_bin_to_sum_len - 1): # all possible non-empty breaks
         # But really we only need to enumerate all subsets of sBin, below is quick hack to eliminate some of the extra enumeration
-        for s_bin_part in range((sBin & (~sBin + 1)), sBin): # smallest single bit set, to all bits set
-            # Only want subsets of sBin, don't waste time on other searches, like creating the "set" of unique partitions
-            if (s_bin_part & sBin != s_bin_part) or s_bin_part == 0:
-                continue
+        # for s_bin_part in range((sBin & (~sBin + 1)), sBin): # smallest single bit set, to all bits set
+        for s_bin_part in self.bin_to_subset[sBin]:
             # The other half is the inverse, masked off to the relevant bits
             s_bin_part_inv = (~s_bin_part) & sBin
             # 0 size subsets don't help, have to be breaking piles apart
-            # You only have to check breaking half one way, hence the s_bin_part < s_bin_part_inv
-            if s_bin_part_inv and s_bin_part < s_bin_part_inv:
-                # print(f"{s_bin_part=} {s_bin_part_inv=} {sBin=}", bin(s_bin_part), bin(s_bin_part_inv), bin(sBin))
-                # Find all the fBin partitions that match the counts for the sBin partitions
-                for f_bin_part in self.f_sum_to_bin.get(self.s_bin_to_sum[s_bin_part], []):
-                    # Is f_bin_part a subset of fBin?
-                    if f_bin_part == f_bin_part & fBin:
-                        f_bin_part_inv = (~f_bin_part) & fBin
-                        # Actually have to do both ways -> f_bin_part, f_bin_part_inv to allow both s_bin pairing options
-                        if f_bin_part_inv in self.f_sum_to_bin.get(self.s_bin_to_sum[s_bin_part_inv], []):
-                            # print(f"{f_bin_part=} {f_bin_part_inv=}")
-                            cNew_part = self.splitMergeSmartRec(s_bin_part, f_bin_part)
-                            # print(f"{cNew_part=}")
-                            # assert cNew_part > -1
-                            cNew_part_inv = self.splitMergeSmartRec(s_bin_part_inv, f_bin_part_inv)
-                            # print(f"{cNew_part_inv=}")
-                            # assert cNew_part_inv > -1
-                            if (cNew_part + cNew_part_inv) < cBest:
-                                cBest = (cNew_part + cNew_part_inv)
-                                # print("cBest", cBest)
+            for f_bin_part in self.f_sum_to_bin.get(self.s_bin_to_sum[s_bin_part], []):
+                # Is f_bin_part a subset of fBin?
+                if f_bin_part == f_bin_part & fBin:
+                    f_bin_part_inv = (~f_bin_part) & fBin
+                    # Actually have to do both ways -> f_bin_part, f_bin_part_inv to allow both s_bin pairing options
+                    if f_bin_part_inv in self.f_sum_to_bin.get(self.s_bin_to_sum[s_bin_part_inv], []):
+                        # print(f"{f_bin_part=} {f_bin_part_inv=}")
+                        cNew_part = self.splitMergeSmartRec(s_bin_part, f_bin_part)
+                        # print(f"{cNew_part=}")
+                        # assert cNew_part > -1
+                        cNew_part_inv = self.splitMergeSmartRec(s_bin_part_inv, f_bin_part_inv)
+                        # print(f"{cNew_part_inv=}")
+                        # assert cNew_part_inv > -1
+                        if (cNew_part + cNew_part_inv) < cBest:
+                            cBest = (cNew_part + cNew_part_inv)
+                            # print("cBest", cBest)
 
         # print("splitMergeSmartRec returns cBest=", cBest)
         self.moves_sbin_to_fbin[sBin][fBin] = cBest
@@ -81,6 +82,7 @@ class clsSplitMergeSmart:
     def __call__(self, sState, fState, b_remove_duplicates=True):
         global cTrials
         cTrials = 0
+
         # We don't have to do this - but it makes it much faster in the worst cases
         if b_remove_duplicates:
             # If the start and finish don't have the same sums - impossible
@@ -150,7 +152,13 @@ class clsSplitMergeSmart:
                     self.moves_sbin_to_fbin[1 << i][1 << j] = -1 # impossible
 
         # Calculate How many moves to get sbin to fbin recursively
-        return self.splitMergeSmartRec((1 << self.s_len) - 1, (1 << self.f_len) - 1)
+        sBin, fBin = (1 << self.s_len) - 1, (1 << self.f_len) - 1
+        if self.s_bin_to_sum[sBin] != self.f_bin_to_sum[fBin]:
+            self.moves_sbin_to_fbin[sBin][fBin] = -1
+            # print("splitMergeSmartRec impossible", moves_sbin_to_fbin[sBin][fBin])
+            return -1
+
+        return self.splitMergeSmartRec(sBin, fBin)
 
 def splitMergeSmart(sState, fState, b_remove_duplicates=True):
     mySplitMergeSmart = clsSplitMergeSmart()
