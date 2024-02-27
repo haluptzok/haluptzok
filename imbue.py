@@ -1,6 +1,6 @@
 import time
 # SplitMerge Solution Times for solving all 123 test problems from TopCoder:
-# SplitMergeSmart(b_remove_duplicates = True): my dynamic programming approach - Total took 2.515 seconds 0.042 minutes 0.001 hours.
+# SplitMergeSmart(b_remove_duplicates = True): my dynamic programming approach - Total took 1.520 seconds
 # SplitMergeNotSmart(b_remove_duplicates = False): my dynamic programming approach - Total took 94.735 seconds 1.579 minutes 0.026 hours.
 # splitMerge - my greedy naive approach - Total took 9295.676 seconds 154.928 minutes 2.582 hours.
 # minMoves - topcoder solution - Total took 252.914 seconds 4.215 minutes 0.070 hours.
@@ -50,10 +50,9 @@ class clsSplitMergeSmart:
         # for each partition, find all fBin partitions that also work
 
         cBest = self.bin_to_cMembers[sBin] - 1 + self.bin_to_cMembers[fBin] - 1
-        # Can we break sBin in 2 pieces - and also have fBin broken in 2 pieces with matching sums
+        # Can we break sBin in 2 pieces - and also have fBin broken in 2 pieces with matching sums to sBin
         # Was: for s_bin_part in range(1, s_bin_to_sum_len - 1): # all possible non-empty breaks
-        # But really we only need to enumerate all subsets of sBin, below is quick hack to eliminate some of the extra enumeration
-        # for s_bin_part in range((sBin & (~sBin + 1)), sBin): # smallest single bit set, to all bits set
+        # But really we only need to enumerate all valid subsets of sBin, which we precomputed in the class constructor
         for s_bin_part in self.bin_to_subset[sBin]:
             # The other half is the inverse, masked off to the relevant bits
             s_bin_part_inv = (~s_bin_part) & sBin
@@ -574,8 +573,8 @@ def minMoves(A, B):
     return rec(0,0)
 
 TestSplitMerge(splitMergeSmart)
-exit()
 TestSplitMerge(splitMergeNotSmart)
+exit()
 TestSplitMerge(minMoves)
 TestSplitMerge(splitMerge)
 exit()
