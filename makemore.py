@@ -129,7 +129,10 @@ class Transformer(nn.Module):
         self.lm_head = nn.Linear(config.n_embd, config.vocab_size, bias=False)
 
         # report number of parameters (note we don't count the decoder parameters in lm_head)
+        n_params_head = sum(p.numel() for p in self.lm_head.parameters())
         n_params = sum(p.numel() for p in self.transformer.parameters())
+        n_params += n_params_head
+        print("number of parameters total:", n_params, "head", n_params_head)
         print("number of parameters: %.2fM" % (n_params/1e6,))
 
         # better init, not covered in the original GPT video, but important, will cover in followup video
@@ -779,8 +782,12 @@ if __name__ == '__main__':
         model = BoW(config)
     else:
         raise ValueError(f'model type {args.type} is not recognized')
-    model.to(args.device)
+    if False:
+        for p in model.parameters():
+            print(p.shape, p.numel())
     print(f"model #params: {sum(p.numel() for p in model.parameters())}")
+    torch.compile()
+    model.to(args.device)
     if args.resume or args.sample_only: # note: if we sample-only then we also assume we are resuming
         print("resuming from existing model in the workdir")
         model.load_state_dict(torch.load(os.path.join(args.work_dir, 'model.pt')))
@@ -816,7 +823,7 @@ if __name__ == '__main__':
         # logging
         if step % 50 == 0:
             t1 = time.time()
-            print(f"step {step} | loss {loss.item():.4f} | step time {(t1-t0)*1000:.2f}ms")
+            print(f"step {step} | loss {loss.item():.4f} | step time {(t1-t0)*1000:.2f}ms | total time {(t1-time_start)*1000:.2f}ms")
             t0 = t1
 
         # evaluate the model
@@ -829,6 +836,9 @@ if __name__ == '__main__':
             if step == (args.max_steps - 1):
                 if args.gentext > 0:
                     estimate_generate_loss(model, train_dataset.data, test_dataset.data, args.device, max_new_tokens=4*args.batch_size)
+                time_end = time.time()
+                time_diff = time_end - time_start
+                print(f"Took {time_diff:.3f} seconds {(time_diff/60):.3f} minutes {(time_diff/3600):.3f} hours.\n")
                 print_samples(num=10)
             # save the model to disk if it has improved
             if best_loss is None or test_loss < best_loss:

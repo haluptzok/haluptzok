@@ -15,11 +15,10 @@ import sys
 # This is derived from the code in:
 # https://github.com/karpathy/ng-video-lecture/blob/master/gpt.py
 
-# What is the longest word - mask off gradient from all partial words that start a sequence
+# idea: mask off gradient from all partial words that start a sequence
 # The gradient of the first character only applies if it's the first character of the word
-# The gradient of parital words  should be masked off
+# The gradient of parital words should be masked off
 # Will it help log-loss on train and test?
-
 # Track the accuracy and loss on the trainset - running averages
 
 # hyperparameters
@@ -30,13 +29,13 @@ eval_interval = 1000
 eval_iters = 4
 eval_gen_final = 20000
 if True: # debug/test for quick runs
-    max_iters = 1000
+    max_iters = 1001
     eval_interval = 1000
-    eval_iters = 1
+    eval_iters = 4
     eval_gen_final = 200
 
 learning_rate = 1e-3
-device = 'cpu' # for this small network it's faster on CPU than on GPU on my machine
+device = 'cuda' # 'cpu' is 3X slower, on path8 219s on cpu vs 70s on cuda
 n_embd = 64
 n_head = 4
 n_layer = 4
@@ -63,7 +62,6 @@ with open('input.txt', 'r', encoding='utf-8') as f:
 
 text_words = text.split()
 biggest_word = ""
-biggest_word
 for words in text_words:
     if len(words) > len(biggest_word):
         biggest_word = words
@@ -94,9 +92,25 @@ val_data = data[n:]
 # print("end of train:", text[n-100:n])
 # print("begin of val:", text[n:n+100])
 
-# data loading - this is simple - but actually quite bad for accuracy performance
-# because it randomly skips over a lot of the data, and doubles or triples up on other samples
-# so it converges more slowly that get_batch1 for the same number of iterations
+trn_index = 0
+trn_len = len(trn_data) - block_size
+print(f"{len(trn_data)=}")
+print(f"{trn_len=}")
+trn_indexes = torch.randperm(trn_len)
+
+val_index = 0
+val_len = len(val_data) - block_size
+print(f"{len(val_data)=}")
+print(f"{val_len=}")
+val_indexes = torch.randperm(val_len)
+
+epoch = 0
+
+# data loading - this is simple - but maybe suboptimal for accuracy performance
+# because it randomly samples, it skips some of the data, and doubles or triples up on other samples.
+# so it probably converges more slowly that get_batch1 for the same number of iterations
+# once nice thing is batches can start at all the indexes into the data.  But maybe it should only
+# allow starting at beginnings of words or sentences, the model doesn't have to model partial word starts
 def get_batch(split):
     # generate a small batch of data of inputs x and targets y
     data = trn_data if split == 'train' else val_data
@@ -106,18 +120,8 @@ def get_batch(split):
     x, y = x.to(device), y.to(device)
     return x, y
 
-trn_index = 0
-trn_len = len(trn_data) - block_size
-print(f"{trn_len=}")
-trn_indexes = torch.randperm(trn_len)
-
-val_index = 0
-val_len = len(val_data) - block_size
-print(f"{val_len=}")
-val_indexes = torch.randperm(val_len)
-
-epoch = 0
 # this is a better version of get_batch - it uses all the data, and doesn't skip any with the random sampling
+# every index will be a start index of a batch before repeating
 def get_batch1(split):
     ix = torch.zeros(batch_size, dtype=torch.long)
     i = 0
@@ -254,7 +258,7 @@ def estimate_generate_loss(model, max_new_tokens=2000):
 
         out[split] = (score, max_new_tokens, cCorrect)
         avg_log_prob = score / max_new_tokens
-        print(f"                            {split[:3]} log_prob={(score/max_new_tokens):.4f}, prob={math.exp(-avg_log_prob):.4f}, {cCorrect=}/{max_new_tokens}")
+        print(f"GLos/{split[:3]} {(score/max_new_tokens):.4f}, prob={math.exp(-avg_log_prob):.4f}, {cCorrect=}/{max_new_tokens}")
     model.train()
 
     return out
@@ -264,9 +268,9 @@ class Head(nn.Module):
 
     def __init__(self, head_size):
         super().__init__()
-        self.key = nn.Linear(n_embd, head_size, bias=False)
-        self.query = nn.Linear(n_embd, head_size, bias=False)
-        self.value = nn.Linear(n_embd, head_size, bias=False)
+        self.key = nn.Linear(n_embd, head_size)
+        self.query = nn.Linear(n_embd, head_size)
+        self.value = nn.Linear(n_embd, head_size)
         self.register_buffer('tril', torch.tril(torch.ones(block_size, block_size)))
 
         self.dropout = nn.Dropout(dropout)
@@ -343,7 +347,7 @@ class GPTLanguageModel(nn.Module):
         self.position_embedding_table = nn.Embedding(block_size, n_embd)
         self.blocks = nn.Sequential(*[Block(n_embd, n_head=n_head) for _ in range(n_layer)])
         self.ln_f = nn.LayerNorm(n_embd) # final layer norm
-        self.lm_head = nn.Linear(n_embd, vocab_size)
+        self.lm_head = nn.Linear(n_embd, vocab_size, bias=False) # language model head
 
         # better init, not covered in the original GPT video, but important, will cover in followup video
         self.apply(self._init_weights)
@@ -394,11 +398,30 @@ class GPTLanguageModel(nn.Module):
             idx = torch.cat((idx, idx_next), dim=1) # (B, T+1)
         return idx
 
+@torch.inference_mode()
+def evaluate(model, dataset, batch_size, max_batches):
+    model.eval()
+    loader = DataLoader(dataset, shuffle=False, batch_size=batch_size, num_workers=0)
+    losses = []
+    for i, batch in enumerate(loader):
+        batch = [t.to(device) for t in batch]
+        X, Y = batch
+        logits, loss = model(X, Y)
+        losses.append(loss.item())
+        if max_batches is not None and i >= max_batches:
+            break
+    mean_loss = torch.tensor(losses).mean().item()
+    model.train() # reset model back to training mode
+    return mean_loss
+
 model = GPTLanguageModel()
-model = model.to(device)
 # print the number of parameters in the model
 print(sum(p.numel() for p in model.parameters())/1e6, 'M parameters')
-
+print(sum(p.numel() for p in model.parameters()), 'M parameters')
+if False:
+    for p in model.parameters():
+        print(p.shape, p.numel(), p.name)
+model = model.to(device)
 # create a PyTorch optimizer
 optimizer = torch.optim.AdamW(model.parameters(), lr=learning_rate)
 
@@ -431,15 +454,24 @@ for step in range(max_iters):
 
     if step % 50 == 0:
         t1 = time.time()
-        print(f"step {step} | loss {loss.item():.4f} | step time {(t1-t0)*1000:.2f}ms")
+        print(f"step {step} | loss {loss.item():.4f} | step time {(t1-t0)*1000:.2f}ms | total time {(t1-time_start)*1000:.2f}ms")
         t0 = t1
 
     # every once in a while evaluate the loss on train and val sets
-    with torch.inference_mode():
-        if (step > 0 and step % eval_interval == 0) or step == max_iters - 1:
+    if (step > 0 and step % eval_interval == 0) or step == max_iters - 1:
+        t0 = time.time()
+        train_loss = evaluate(model, trn_dataloader.dataset, batch_size=batch_size, max_batches=4)
+        test_loss  = evaluate(model, val_dataset, batch_size=batch_size, max_batches=4)
+        print(f"Loss/trn {train_loss:.4f}", step)
+        print(f"Loss/tst {test_loss:.4f}", step)
+
+        with torch.inference_mode():
             losses = estimate_loss(model)
             print(f"{step}: tra {losses['train']:.4f}, val {losses['val']:.4f}")
             estimate_generate_loss(model, eval_iters * batch_size)
+        t1 = time.time()
+        print(f"eval {step} | eval time {(t1-t0)*1000:.2f}ms | total time {(t1-time_start)*1000:.2f}ms")
+        t0 = time.time()
 
 time_end = time.time()
 time_diff = time_end - time_start
@@ -474,6 +506,7 @@ if __name__ == '__main__':
     parser.add_argument('--seed', type=int, default=3407, help="seed")
     # sampling
     parser.add_argument('--top-k', type=int, default=-1, help="top-k for sampling, -1 means no top-k")
+    parser.add_argument('--block_size', type=int, default=32, help="top-k for sampling, -1 means no top-k")
     # model
     parser.add_argument('--type', type=str, default='transformer', help="model class type to use, bigram|mlp|rnn|gru|bow|transformer")
     parser.add_argument('--n-layer', type=int, default=4, help="number of layers")
@@ -482,7 +515,7 @@ if __name__ == '__main__':
     parser.add_argument('--n-embd2', type=int, default=64, help="number of feature channels elsewhere in the model")
     # optimization
     parser.add_argument('--batch-size', '-b', type=int, default=512, help="batch size during optimization")
-    parser.add_argument('--learning-rate', '-l', type=float, default=5e-4, help="learning rate")
+    parser.add_argument('--learning-rate', '-l', type=float, default=0.001, help="learning rate")
     parser.add_argument('--weight-decay', '-w', type=float, default=0.01, help="weight decay")
     args = parser.parse_args()
     print(vars(args))
@@ -493,7 +526,6 @@ if __name__ == '__main__':
     torch.manual_seed(args.seed)
     torch.cuda.manual_seed_all(args.seed)
     os.makedirs(args.work_dir, exist_ok=True)
-    # writer = SummaryWriter(log_dir=args.work_dir)
 
     # init datasets
     train_dataset, test_dataset = create_datasets(args.input_file)
@@ -558,24 +590,29 @@ if __name__ == '__main__':
         # logging
         if step % 50 == 0:
             t1 = time.time()
-            print(f"step {step} | loss {loss.item():.4f} | 10 step time {(t1-t0)*1000:.2f}ms")
+            print(f"step {step} | loss {loss.item():.4f} | step time {(t1-t0)*1000:.2f}ms | total time {(t1-time_start)*1000:.2f}ms")
             t0 = t1
 
         # evaluate the model
-        if step > 0 and step % 1000 == 0:
-            train_loss = evaluate(model, train_dataset, batch_size=100, max_batches=10)
-            test_loss  = evaluate(model, test_dataset,  batch_size=100, max_batches=10)
-            print("Loss/train", train_loss, step)
-            print("Loss/test", test_loss, step)
-            print(f"step {step} train loss: {train_loss} test loss: {test_loss}")
+        if (step > 0 and step % 1000 == 0) or step == (args.max_steps - 1):
+            t0 = time.time()
+            train_loss = evaluate(model, train_dataset, batch_size=args.batch_size, max_batches=4)
+            test_loss  = evaluate(model, test_dataset,  batch_size=args.batch_size, max_batches=4)
+            print(f"Loss/trn {train_loss:.4f}", step)
+            print(f"Loss/tst {test_loss:.4f}", step)
+            if step == (args.max_steps - 1):
+                if args.gentext > 0:
+                    estimate_generate_loss(model, train_dataset.data, test_dataset.data, args.device, max_new_tokens=4*args.batch_size)
+                print_samples(num=10)
             # save the model to disk if it has improved
             if best_loss is None or test_loss < best_loss:
                 out_path = os.path.join(args.work_dir, "model.pt")
                 print(f"test loss {test_loss} is the best so far, saving model to {out_path}")
                 torch.save(model.state_dict(), out_path)
                 best_loss = test_loss
-            print_samples(num=10)
-            t0 = time.time()
+            t1 = time.time()
+            print(f"evaluate time {(t1-t0)*1000:.2f}ms")
+            t0 = t1
 
         step += 1
         # termination conditions
@@ -585,7 +622,6 @@ if __name__ == '__main__':
     time_end = time.time()
     time_diff = time_end - time_start
     print(f"Took {time_diff:.3f} seconds {(time_diff/60):.3f} minutes {(time_diff/3600):.3f} hours.\n")
-
 
 if False:
     # This was just me trying to figure out how much data is expected to be skipped in
