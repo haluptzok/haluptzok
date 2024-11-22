@@ -1,3 +1,176 @@
+# Welcome to Meta!
+
+# This is just a simple shared plaintext pad, with no execution capabilities.
+
+# When you know what language you would like to use for your interview,
+# simply choose it from the dropdown in the left bar.
+
+# Enjoy your interview!
+
+# Problem: K-means Clustering
+
+# Given a dataset of points - m samples of n dimensional vectors - k cluster centers that represent the data
+
+# One simple method is - just merge the 2 closest vectors - repeat - until just k left.
+
+# Merging the vectors - minimize the approximation error introduced - so each cluster needs a weight
+
+def KMeansCluster(pData, kClusters):  # pData is m X n matrix of samples list of lists, k is the desired number to return
+    m = len(pData)    # number of samples
+    n = len(pData[0]) # dimension of each vector
+    weight = [1.0] * m  # each point is initially weight 1
+    print("Start", kClusters, "clusters")
+    print("pData", pData)
+
+
+    # compute for each point the nearest neighbors
+    # find the 2 closest and merge them into a new point
+    # *** the distance should include the approximation introduced by factoring the weight
+    # merge points - keep deleting from the end of the array
+
+    while m > kClusters:
+        # print("while start m", m, "k", kClusters)
+        # find the closest 2 points to merge
+        min_dist = 1000000000
+        lo = 0 # the low index of the closest 2 points
+        hi = 1 # the highest index of the closest 2 points
+
+        for i in range(m):
+            for j in range(i + 1, m):
+                dist = 0
+                for k in range(n):
+                    tmp = pData[i][k] - pData[j][k]
+                    dist += tmp * tmp
+                    dist = dist * (weight[i] * weight[j])
+
+                if dist < min_dist:
+                    min_dist = dist
+                    lo = i
+                    hi = j
+
+        # Merge the 2 minimal distance points
+        for k in range(n):
+            # incorporate cluster weight
+            pData[lo][k] = (pData[lo][k] * weight[lo]) + (pData[hi][k] * weight[hi])
+            pData[lo][k] /= (weight[lo] + weight[hi])
+        weight[lo] = weight[lo] + weight[hi]
+
+        # copy the last element in the matrix to spot hi - and decrement m by 1
+        # because pData[hi] was merged into pData[lo]
+        for k in range(n):
+            pData[hi][k] = pData[m - 1][k]
+        weight[hi] = weight[m - 1]
+        del pData[m - 1]    # delete the last element
+        del weight[m - 1]   # delete the last element
+        m -= 1
+        # print("pData", pData)
+        # print("weight", weight)
+        # print("m", m, "k", k)
+
+    # pData will be the cluster centers of the k points
+
+    return pData[:kClusters]
+
+matrix = [[1, 1, 1, 1, 1],
+[1, 1, 1, 1, 1],
+[2, 2, 2, 2, 2],
+[2, 2, 2, 2, 2]]
+
+print(KMeansCluster(matrix, 2))
+matrix = [[1, 1, 1, 1, 1],
+[1, 1, 1, 1, 1],
+[2, 2, 2, 2, 2],
+[2, 2, 2, 2, 2]]
+
+print(KMeansCluster(matrix, 1))
+
+matrix = [[4, 5, 6, 7, 2],
+[9, 4, 5, 6, 7],
+[8, 9, 4, 5, 6],
+[3, 8, 9, 4, 5]]
+print(KMeansCluster(matrix, 2))
+matrix = [[1, 1, 1, 1, 1],
+[1, 1, 1, 1, 1],
+[1, 1, 1, 1, 1],
+[1, 1, 1, 1, 1]]
+print(KMeansCluster(matrix, 2))
+
+matrix = [[1, 1, 1, 1, 1],
+[1, 1, 1, 1, 1],
+[1, 1, 1, 1, 1],
+[2, 2, 2, 2, 2]]
+print(KMeansCluster(matrix, 2))
+matrix = [[1, 1, 1, 1, 1],
+[1, 1, 1, 1, 1],
+[1, 1, 1, 1, 1],
+[2, 2, 2, 2, 2]]
+print(KMeansCluster(matrix, 1))
+
+
+
+# optimizing ideas
+# maintain list of closest points - maybe just 1 closest point - and it's distance
+# Just recompute the point disatances for the merged point - and find
+
+# Question 2: Check if a matrix is Toeplitz or not
+
+# An example of a Toeplitz matrix is:
+# 4 5 6 7 2
+# 9 4 5 6 7
+# 8 9 4 5 6
+# 3 8 9 4 5
+
+ # I would walk along the diagonal from the left side, and check they are all the same till stepping off, walk along the top step down-right and make sure they are all the same
+
+
+def CheckToeplitz(matrix):
+    m = len(matrix) # # of rows
+    n = len(matrix[0]) # # of cols
+
+    # walk down left edge
+    for i in range(m):  # # of rows
+        val = matrix[i][0]
+        row = i
+        col = 0
+        while row < m and col < n:
+            if matrix[row][col] != val:
+                return False
+            row += 1
+            col += 1
+
+    # walk across top edge
+    for j in range(n):  # # of cols
+        val = matrix[0][j]
+        row = 0
+        col = j
+        while row < m and col < n:
+            if matrix[row][col] != val:
+                return False
+            row += 1
+            col += 1
+
+    return True
+
+
+matrix = [[4, 5, 6, 7, 2],
+[9, 4, 5, 6, 7],
+[8, 9, 4, 5, 6],
+[3, 8, 9, 4, 5]]
+
+print("CheckToeplitz Matrix", CheckToeplitz(matrix))
+
+matrix = [[4, 5, 6, 7, 2],
+[9, 4, 5, 6, 7],
+[8, 9, 4, 5, 6],
+[3, 8, 4, 4, 5]]
+
+print("CheckToeplitz Matrix", CheckToeplitz(matrix))
+
+
+exit()
+
+
+
 #                        1 1 1 1 1 1 1 1 1 1
 #    0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9
 # 0 |.|.|.|.|.|.|.|.|.|.|.|.|.|.|.|.|.|.|.|.|
