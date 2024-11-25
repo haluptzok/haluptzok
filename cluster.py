@@ -22,7 +22,7 @@ def KMeansCluster(pData, kClusters):  # pData is m X n matrix of samples list of
     m = len(pData)    # number of samples
     n = len(pData[0]) # dimension of each vector
     weight = [1.0] * m  # each point is initially weight 1
-    print("Start", kClusters, "clusters")
+    # print("Start", kClusters, "clusters")
 
     # compute for each point the nearest neighbors
     # find the 2 closest and merge them into a new point
@@ -81,19 +81,22 @@ from heapq import heapify, heappush, heappop
 def KMeansClusterFast(pData, kClusters):  # pData is m X n matrix of samples list of lists, k is the desired number to return
     m, n = pData.shape
     weight = np.ones((m,), dtype=float) # each point is initially weight 1
-    print("Fast Start", kClusters, "clusters", type(pData))
+    # print("Fast Start", kClusters, "clusters", type(pData))
     if m < 5:
-        print("pData", pData)
+        pass
+        # print("start pData", pData)
+        # print("start weight", weight)
 
     if kClusters >= m:
         # Nothing to do, each data point can be a cluster center
         return pData
 
     # First compute for each data point the distance to all it's neighbors into a minHeap
-    # the distance should include the approximation introduced by factoring in the weight
+    # the distance should include the approximation penalty introduced by factoring in 
+    # the weight of the clusters being merged - Wards method minimizes the variance of the clusters
     heap = []
     heapify(heap)
-    print("start m", m, "k", kClusters)
+    # print("start m", m, "k", kClusters)
     for i in range(m):
         for j in range(i + 1, m):
             dist = 0
@@ -101,6 +104,8 @@ def KMeansClusterFast(pData, kClusters):  # pData is m X n matrix of samples lis
                 tmp = pData[i][k] - pData[j][k]
                 dist += tmp * tmp
                 dist = dist * (weight[i] * weight[j]) / (weight[i] + weight[j])
+
+            # print("(dist, i, weight[i], j, weight[j], len(heap))", dist, i, weight[i], j, weight[j], len(heap))
 
             heappush(heap, (dist, i, weight[i], j, weight[j]))
     # Now just keep merging the clostest clusters by distance until we are down to KClusters
@@ -113,6 +118,7 @@ def KMeansClusterFast(pData, kClusters):  # pData is m X n matrix of samples lis
         hi = heap[0][3]
         weight_hi = heap[0][4]
         heappop(heap)
+        # print("min_dist", min_dist, "lo", lo, "hi", hi, "weight_lo", weight_lo, "weight_hi", weight_hi)
         # Skip this one if it's for clusters that got merged already 
         # which is if the current cluster weights don't match what we stored 
         # in minHeap when we computed this distance between these 2 clusters
@@ -129,19 +135,20 @@ def KMeansClusterFast(pData, kClusters):  # pData is m X n matrix of samples lis
         m -= 1
         # Find the distance to all the other clusters to this newly formed cluster
         # and place those distances in the minHeap
-        for i in range(m):
+        for i in range(len(pData)):
             # Can't merge with yourself or an invalid cluster
             if lo != i and weight[i] != 0.0:
                 dist = 0
                 for k in range(n):
-                    tmp = pData[i][k] - pData[j][k]
+                    tmp = pData[i][k] - pData[lo][k]
                     dist += tmp * tmp
-                    dist = dist * (weight[i] * weight[j]) / (weight[i] + weight[j])
+                    dist = dist * (weight[i] * weight[lo]) / (weight[i] + weight[lo])
 
-                heappush(heap, (dist, i, weight[i], j, weight[j]))
+                heappush(heap, (dist, i, weight[i], lo, weight[lo]))
+                # print("(dist, i, weight[i], lo, weight[lo], len(heap))", dist, i, weight[i], lo, weight[lo], len(heap))
         # print("pData", pData)
         # print("weight", weight)
-        # print("m", m, "k", k)
+        # print("m", m, "kClusters", kClusters)
 
     # pData will be the cluster centers of the k points
 
@@ -160,14 +167,14 @@ def KMeansTest(matrix, k):
 
     time_start = time.time()
     ans1 = KMeansCluster(matrix1, k)
-    print(f"{ans1=}")
+    # print(f"{ans1=}")
     time_end1 = time.time()
     ans2 = KMeansClusterFast(matrix2, k)
     time_end2 = time.time()
     time_diff1 = time_end1 - time_start
     time_diff2 = time_end2 - time_end1
 
-    if ans1.tolist() != ans2.tolist():
+    if sorted(ans1.tolist()) != sorted(ans2.tolist()):
         print("Error Mismatch")
         print("matrix1", matrix1)
         print("ans1", ans1)
@@ -175,8 +182,8 @@ def KMeansTest(matrix, k):
         print("Error Mismatch")
         exit()
 
-    print("ans1", ans1)
-    print(f"{time_diff1=:.3f}  {time_diff1=:.3f} seconds.")
+    # print("ans1", ans1)
+    print(f"{time_diff1=:.3f}  {time_diff2=:.3f} seconds.")
 
 matrix = [[1, 1, 1, 1, 1],
           [1, 1, 1, 1, 1],
