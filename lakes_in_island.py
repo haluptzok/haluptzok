@@ -15,17 +15,18 @@
 
 # Merging the vectors - minimize the approximation error introduced - so each cluster needs a weight
 
+import numpy as np
+import time
+
 def KMeansCluster(pData, kClusters):  # pData is m X n matrix of samples list of lists, k is the desired number to return
     m = len(pData)    # number of samples
     n = len(pData[0]) # dimension of each vector
     weight = [1.0] * m  # each point is initially weight 1
     print("Start", kClusters, "clusters")
-    print("pData", pData)
-
 
     # compute for each point the nearest neighbors
     # find the 2 closest and merge them into a new point
-    # *** the distance should include the approximation introduced by factoring the weight
+    # the distance should include the approximation introduced by factoring the weight
     # merge points - keep deleting from the end of the array
 
     while m > kClusters:
@@ -41,7 +42,7 @@ def KMeansCluster(pData, kClusters):  # pData is m X n matrix of samples list of
                 for k in range(n):
                     tmp = pData[i][k] - pData[j][k]
                     dist += tmp * tmp
-                    dist = dist * (weight[i] * weight[j])
+                    dist = dist * (weight[i] * weight[j]) / (weight[i] + weight[j])
 
                 if dist < min_dist:
                     min_dist = dist
@@ -60,8 +61,8 @@ def KMeansCluster(pData, kClusters):  # pData is m X n matrix of samples list of
         for k in range(n):
             pData[hi][k] = pData[m - 1][k]
         weight[hi] = weight[m - 1]
-        del pData[m - 1]    # delete the last element
-        del weight[m - 1]   # delete the last element
+        # del pData[m - 1]    # delete the last element
+        # del weight[m - 1]   # delete the last element
         m -= 1
         # print("pData", pData)
         # print("weight", weight)
@@ -71,47 +72,158 @@ def KMeansCluster(pData, kClusters):  # pData is m X n matrix of samples list of
 
     return pData[:kClusters]
 
+# Do this in numpy
+# Then do this with torch to warm up my GPU.
+# Do this with minHeap
+
+# Let's do it faster with minHeap, and numpy
+from heapq import heapify, heappush, heappop
+def KMeansClusterFast(pData, kClusters):  # pData is m X n matrix of samples list of lists, k is the desired number to return
+    m, n = pData.shape
+    weight = np.ones((m,), dtype=float) # each point is initially weight 1
+    print("Start", kClusters, "clusters", type(pData))
+    if m < 5:
+        print("pData", pData)
+
+    # compute for each point the nearest neighbors
+    # find the 2 closest and merge them into a new point
+    # the distance should include the approximation introduced by factoring the weight
+    # merge points - keep deleting from the end of the array
+    heap = []
+    heapify(heap)
+    if kClusters < m:
+        # print("while start m", m, "k", kClusters)
+        # find the closest 2 points to merge
+        for i in range(m):
+            for j in range(i + 1, m):
+                dist = 0
+                for k in range(n):
+                    tmp = pData[i][k] - pData[j][k]
+                    dist += tmp * tmp
+                    dist = dist * (weight[i] * weight[j]) / (weight[i] + weight[j])
+
+                heappush(heap, (dist, i, weight[i], j, weight[j]))
+
+    while kClusters < m:
+        # Merge the 2 minimal distance clusters, the top of the minHeap
+        min_dist = heap[0][0]
+        lo = heap[0][1]
+        weight_lo = heap[0][2]
+        hi = heap[0][3]
+        weight_hi = heap[0][4]
+        heappop(heap)
+        # Prune out stuff that got merged already 
+        # which is if the current cluster weights don't match what we stored 
+        # in minHeap when we computed this distance
+        if weight[lo] != weight_lo or weight[hi] != weight_hi:
+            # This minimum distance is for 2 clusters that have been merged
+            # So skip it, no longer a valid merge option
+            continue
+
+        # merge the 2 clusters into the lo one
+        for k in range(n):
+            # incorporate cluster weight
+            pData[lo][k] = (pData[lo][k] * weight[lo]) + (pData[hi][k] * weight[hi])
+            pData[lo][k] /= (weight[lo] + weight[hi])
+        weight[lo] = weight[lo] + weight[hi]
+        # mark the hi cluster as invalid with 0 weight
+        weight[hi] = 0.0
+
+        # Find the distance to all the other clusters to this newly formed cluster
+        # and place those distances in the minHeap
+        for i in range(m):
+            # Can't merge with yourself or an invalid cluster
+            if lo != i and weight[i] != 0.0:
+                dist = 0
+                for k in range(n):
+                    tmp = pData[i][k] - pData[j][k]
+                    dist += tmp * tmp
+                    dist = dist * (weight[i] * weight[j]) / (weight[i] + weight[j])
+
+                heappush(heap, (dist, i, weight[i], j, weight[j]))
+        # print("pData", pData)
+        # print("weight", weight)
+        # print("m", m, "k", k)
+
+    # pData will be the cluster centers of the k points
+
+    ans = []
+    for i in len(pData):
+        if weight[i] != 0.0:            
+            ans.append(pData[i])
+
+    return ans
+
+def KMeansTest(matrix, k):
+    matrix1 = [matrix[i].copy() for i in range(len(matrix))]
+    matrix2 = [matrix[i].copy() for i in range(len(matrix))]
+    matrix1 = np.array(matrix1, dtype=float)
+    matrix2 = np.array(matrix2, dtype=float)
+
+
+    time_start = time.time()
+    ans1 = KMeansCluster(matrix1, k)
+    print(f"{ans1=}")
+    time_end1 = time.time()
+    ans2 = KMeansClusterFast(matrix2, k)
+    time_end2 = time.time()
+    time_diff1 = time_end1 - time_start
+    time_diff2 = time_end2 - time_end1
+
+    if ans1.tolist() != ans2.tolist():
+        print("Error Mismatch")
+        print("matrix1", matrix1)
+        print("ans1", ans1)
+        print("ans2", ans2)
+        print("Error Mismatch")
+        exit()
+
+    print("ans1", ans1)
+    print(f"{time_diff1=:.3f}  {time_diff1=:.3f} seconds.")
+
+matrix = [[1, 1, 1, 1, 1],
+          [1, 1, 1, 1, 1],
+          [2, 2, 2, 2, 2],
+          [2, 2, 2, 2, 2]]
+KMeansTest(matrix, 2)
+exit()
+
 matrix = [[1, 1, 1, 1, 1],
 [1, 1, 1, 1, 1],
 [2, 2, 2, 2, 2],
 [2, 2, 2, 2, 2]]
-
-print(KMeansCluster(matrix, 2))
-matrix = [[1, 1, 1, 1, 1],
-[1, 1, 1, 1, 1],
-[2, 2, 2, 2, 2],
-[2, 2, 2, 2, 2]]
-
-print(KMeansCluster(matrix, 1))
+KMeansTest(matrix, 1)
 
 matrix = [[4, 5, 6, 7, 2],
 [9, 4, 5, 6, 7],
 [8, 9, 4, 5, 6],
 [3, 8, 9, 4, 5]]
-print(KMeansCluster(matrix, 2))
+KMeansTest(matrix, 2)
+
 matrix = [[1, 1, 1, 1, 1],
 [1, 1, 1, 1, 1],
 [1, 1, 1, 1, 1],
 [1, 1, 1, 1, 1]]
-print(KMeansCluster(matrix, 2))
+KMeansTest(matrix, 2)
 
 matrix = [[1, 1, 1, 1, 1],
 [1, 1, 1, 1, 1],
 [1, 1, 1, 1, 1],
 [2, 2, 2, 2, 2]]
-print(KMeansCluster(matrix, 2))
+KMeansTest(matrix, 2)
+
 matrix = [[1, 1, 1, 1, 1],
 [1, 1, 1, 1, 1],
 [1, 1, 1, 1, 1],
 [2, 2, 2, 2, 2]]
-print(KMeansCluster(matrix, 1))
+KMeansTest(matrix, 1)
 
-
+matrix = np.random.rand(100,5)
+KMeansTest(matrix, 2)
 
 # optimizing ideas
 # maintain list of closest points - maybe just 1 closest point - and it's distance
-# Just recompute the point disatances for the merged point - and find
-
+# Just recompute the point distances for the merged point
 # Question 2: Check if a matrix is Toeplitz or not
 
 # An example of a Toeplitz matrix is:
